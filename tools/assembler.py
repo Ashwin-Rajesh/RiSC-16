@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
 
+"""
+MIT License
+
+Copyright (c) 2022 Ashwin Rajesh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 import sys
 import os
 
@@ -68,24 +92,24 @@ def get_opcode(inp):
     return "___", 0, op_decode_error(f" Unknown opcode \"{inp}\"")
 
 def get_reg(inp : str):
-
+    start = 0
     if(inp[0] == "r"):
-        try:
-            val = int(inp[1])
-        except ValueError:
-            return "", reg_decode_error(f"Register id not an integer : {inp}")
+        start = 1
 
-        if(val < 8):
-            out = bin(int(inp[1]))[2:]
+    try:
+        val = int(inp[start])
+    except ValueError:
+        return "", reg_decode_error(f"Register id not an integer : {inp}")
 
-            if(len(out) < 3):
-                out = "0"*(3-len(out)) + out
+    if(val < 8):
+        out = bin(int(inp[start]))[2:]
 
-            return out, None
-        else:
-            return "", reg_decode_error(f"Register id must be < 8")
+        if(len(out) < 3):
+            out = "0"*(3-len(out)) + out
+
+        return out, None
     else:
-        return "___", reg_decode_error(f"Register names must start with \"r\"")
+        return "", reg_decode_error(f"Register id must be < 8")
 
 def parse_imm(inp : str):
     base        = 10        # Base of the number
@@ -140,12 +164,8 @@ def get_imm(inp : str):
 
     return "0"*(10-len(val)) + val, None
 
-# Splits the bitstream into sections of 8 each and writes into the file file_name
 def write_code(file_name, bitstream):
     with open(file_name, "w") as f:
-        # for i in range(len(bitstream)//8):
-        #     f.write(bitstream[8*i : 8*(i+1)]+"\n")
-        #     print(bitstream[8*i : 8*(i+1)])
         for i in range(len(bitstream) // 16):
             f.write(bitstream[16 * i : 16*(i+1)]+"\n")
             print(bitstream[16*i : 16*(i+1)])
