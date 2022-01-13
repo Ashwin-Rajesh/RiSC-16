@@ -75,6 +75,7 @@ module toplevel (
   output[15:0] pc
 );
 ```
+- Reads from the file, ```code.data``` to initialize instruction memory
 
 ---
 
@@ -129,8 +130,11 @@ module toplevel (
 - ```function logic[15:0] to_bin();```
   - Convert the instruction representation to binary
 
-- ```function from_bin(logic[15:0] bin_code);```
+- ```function void from_bin(logic[15:0] bin_code);```
   - Get the values from binary representation
+
+- ```function string get_coverage();```
+  - Get instruction format wise coverage information as a string
 
 #### ```mem_data_ref.svh```
 - Data memory reference
@@ -183,12 +187,55 @@ module toplevel (
 - In folder [tb](./tb)
 - ```core_test.sv```
   - Testing the entire processor
+  - Output :
+  ```
+  Staring core processor test
+          0 instructions completed
+      10000 instructions completed
+      20000 instructions completed
+      30000 instructions completed
+      40000 instructions completed
+      50000 instructions completed
+      60000 instructions completed
+      70000 instructions completed
+      80000 instructions completed
+      90000 instructions completed
+  Number of failures :           0
+  Instruction coverage : Net - 100.00		RRR - 100.00		RRI ; 100.00		RI : 100.00
+  Finished core processor test
+  ```
 - ```inst_test.sv```
   - Testing if instruction model encode and decode is working
+  - Output:
+  ```
+  Staring instruction test
+          0 NAND r7, r4, r4  NAND r7, r4, r4 
+        250 ADD  r1, r3, r7  ADD  r1, r3, r7 
+        ...
+      24750 BEQ  r3, r3, 20  BEQ  r3, r3, 20 
+          0 inconsistencies detected!
+  Coverage : Net - 99.99		RRR - 99.90		RRI ; 100.00		RI : 100.00
+  Finished instruction test
+  ```
 - ```mem_data_test.sv```
   - Testing data memory
+  - Output :
+  ```
+  Starting data memory test
+  Coverage : 100.00
+  Data memory test finished
+  ... (simuator logs)
+  "mem_data_test.sv", 110: mem_data_test.cover_reread, 50083 attempts, 15450 total match, 15450 first match
+  ...
+  ```
 - ```mem_reg_test.sv```
   - Testing register file
+  - Output :
+  ```
+  Starting register test
+  Coverage : 100.00
+  Finished register test
+  ```
 - ```testbench.sv```
   - Toplevel testbench which instantiates the other testbenches
 
@@ -200,4 +247,5 @@ module toplevel (
 - I caught multiple bugs in both the RTL code and the reference designs
   - Assigning 0 to a wire by mistake
   - Inaccuracy in JALR instruction execution by the simulator when both rega and regb are the same
-- 10,000 random instructions were generated and used for verification. We can be reasonable confident that the reference design and RTL design are equivalent.
+- 100,000 random instructions were generated and used for verification. Since the state was the same throughout, we can be reasonable confident that the reference design and RTL design are equivalent.
+- There are no makefiles or scripts to run these because i used EDA playground to run them. Access it [here](https://www.edaplayground.com/x/H8RE)
