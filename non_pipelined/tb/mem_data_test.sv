@@ -58,7 +58,7 @@ module mem_data_test;
       bins addr_range[100] = {[0:p_MEM_SIZE-1]};
     }
     select_ranges  : coverpoint address[15:$clog2(p_MEM_SIZE)] {
-      bins addr_range[100] = {[0:2**(16-$clog2(p_MEM_SIZE))]};
+      bins addr_range[10] = {[0:2**(16-$clog2(p_MEM_SIZE))]};
     }
   endgroup
   cg cg_inst;

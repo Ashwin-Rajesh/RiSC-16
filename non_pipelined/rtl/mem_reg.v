@@ -22,26 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Register file
-// 8 registers, indexed from 000 to 111.
-// R0 always stores 0. It cannot be written to.
-
-// Ports
-// data - Datapath
-// cntr - Controller
-
-// Outputs
-// data : out1      : Output from port 1
-// data : out2      : Output from port 2
-
-// Inputs
-// data : src1      : Read address for port 1
-// data : src2      : Read address for port 2
-// data : tgt       : Write address
-// data : in        : Data to write
-// cntr : clk       : Clock signal (positive edge triggered)
-// cntr : writeEn   : Write enable (active high)
-// cntr : rst       : Reset all to 0 (active high)
+`ifndef MEM_REG_V
+`define MEM_REG_V
 
 module mem_reg #(
     parameter p_WORD_LEN        = 16,
@@ -89,3 +71,5 @@ module mem_reg #(
     end
             
 endmodule
+
+`endif

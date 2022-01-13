@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+`ifndef MEM_DATA_V
+`define MEM_DATA_V
+
 // Data memory
 
 module mem_data #(
@@ -70,3 +73,5 @@ module mem_data #(
     // Asynchronous read
   	assign dataOut = enable ? memory[address_trunc] : 0;
 endmodule
+
+`endif

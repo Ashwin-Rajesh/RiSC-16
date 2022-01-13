@@ -140,6 +140,8 @@ module mem_reg_test;
 
     // Show coverage information
     $display("Coverage : %.2f", cg_inst.get_coverage());
+    
+    $$display("Finished register test");
     $finish();
   end
 

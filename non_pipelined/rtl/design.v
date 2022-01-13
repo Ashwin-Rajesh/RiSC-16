@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+`ifndef DESIGN_SV
+`define DESIGN_SV
+
+`include "core.v"
+
 module toplevel (
   input clk,                  // Global clock
   output[15:0] pc
@@ -44,3 +49,5 @@ module toplevel (
   );
   
 endmodule
+
+`endif
