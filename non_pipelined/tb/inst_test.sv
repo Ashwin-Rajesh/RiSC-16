@@ -31,7 +31,7 @@ SOFTWARE.
 // Test that instruction decode and encode works well
 module inst_test;
   // Configuration parameters
-  localparam max_count = 10000;
+  localparam max_count = 25000;
 
   // Instruction objects to test  
   instruction inst;
@@ -45,8 +45,9 @@ module inst_test;
     inst2 	= new();    
     inst 	  = new();
 
-    // Main loop
+    $display("Staring instruction test");
 
+    // Main loop
     for(i = 0; i < max_count; i = i + 1) begin
       logic[15:0] inst_bin;    
       
@@ -75,9 +76,9 @@ module inst_test;
     $display("%d inconsistencies detected!", count);
 
     // Display coverage information
-    $display("coverage : %.2f", inst.cg.get_coverage()); 
-    $display("Signed imm coverage : %.2f, Long imm coverage : %.2f", inst.cg.sig_imm.get_coverage(), inst.cg.long_imm.get_coverage());
-    $display("RRR : %.2f RRI : %.2f RI : %.2f", inst.cg.RRR_cover.get_coverage(), inst.cg.RRI_cover.get_coverage(), inst.cg.RI_cover.get_coverage());
+    $display("Coverage : %s", inst.get_coverage()); 
+
+    $display("Finished instruction test");
   end
 endmodule
 

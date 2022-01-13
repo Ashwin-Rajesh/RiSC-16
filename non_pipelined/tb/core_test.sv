@@ -33,7 +33,7 @@ SOFTWARE.
 // Test the processor core
 module core_test;
 	// Parameters for configuration
-	localparam p_INST_COUNT = 10000;
+	localparam p_INST_COUNT = 100000;
 	localparam p_DATA_COUNT = 1024;
 	localparam p_LOG_TRACE = 0;
 	
@@ -62,23 +62,26 @@ module core_test;
 
 	// Misc helper variables	
 	string temp;
+	int fail_count = 0;
 	
 	initial begin
+        $display("Staring core processor test");
+      
 		// Prepare dumpfile
 		$dumpfile("dump.vcd");
 		$dumpvars(0, core_test);
 
 		// Initialize simulator		
 		sim = new();
-		fail_count = 0;
-		
+        inst = new();	
+      
 		#1;
 
 		// Main loop			
 		for(int i = 0; i < p_INST_COUNT; i = i + 1) begin
 			// Randomize the instruction
-			inst = new();
 			inst.randomize();
+          	inst.cg.sample();
 
 			// Set instruction to execute in the simulator
 			sim.set_inst(inst);
@@ -105,7 +108,10 @@ module core_test;
 			if(~verify_status()) break;
 		end
 
-		$display("Number of failures : %d", fail_cont);
+      	$display("Number of failures : %d", fail_count);
+      	$display("Instruction coverage : %s", inst.get_coverage());
+
+        $display("Finished core processor test");
 		$finish;
 	end
 

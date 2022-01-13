@@ -59,8 +59,8 @@ class instruction;
   // What format is an instruction?
   static const opcode_format_t format_lookup[opcode_t] = '{
     ADD		: RRR,
-    ADDI  	: RRI,
-    NAND  	: RRR,
+    ADDI  : RRI,
+    NAND  : RRR,
     LUI		: RI,
     SW		: RRI,
     LW		: RRI,
@@ -85,8 +85,23 @@ class instruction;
   
   // Coverage collector
   covergroup cg;
-    opcode_cover:		coverpoint opcode;
-  	
+    RRR_opcode_cover: 	coverpoint opcode iff(format_lookup[opcode] == RRR) {
+      bins ADD  = {ADD};
+      bins NAND = {NAND};
+    }
+
+    RRI_opcode_cover: 	coverpoint opcode iff(format_lookup[opcode] == RRI) {
+      bins ADDI = {ADDI};
+      bins SW   = {SW};
+      bins LW   = {LW};
+      bins BEQ  = {BEQ};
+      bins JALR = {JALR};
+    }
+    
+    RI_opcode_cover: 	coverpoint opcode iff(format_lookup[opcode] == RI) {
+      bins LUI  = {LUI};
+    }
+    
     rega_cover:		coverpoint rega;
     
     regb_cover:		coverpoint regb iff(format_lookup[opcode] != RI);
@@ -104,11 +119,16 @@ class instruction;
     long_imm:	coverpoint imm iff(format_lookup[opcode] == RI){
       bins zero = {0};
       bins vals[5] = {[1:1023]};
+      bins max  = {1023};
+    }
+        
+    RRR_cover : cross RRR_opcode_cover, rega_cover, regb_cover, regc_cover;
+
+    RRI_cover : cross RRI_opcode_cover, rega_cover, regb_cover, sig_imm {
+      ignore_bins jalr_inv = binsof (RRI_opcode_cover.JALR) || !binsof(sig_imm.zero);	// Do not include JALR with non-zero immediate
     }
     
-    RRR_cover : cross opcode_cover, rega_cover, regb_cover, regc_cover 	iff(format_lookup[opcode] == RRR);
-    RRI_cover : cross opcode_cover, rega_cover, regb_cover, sig_imm	    iff(format_lookup[opcode] == RRI);
-    RI_cover  : cross opcode_cover, rega_cover, long_imm		            iff(format_lookup[opcode] == RI);
+    RI_cover  : cross RI_opcode_cover,  rega_cover, long_imm;
   endgroup
 
   // Constructor
@@ -172,7 +192,7 @@ class instruction;
   endfunction : to_bin
 
   // Get values from binary
-  function from_bin(logic[15:0] bin_code);
+  function void from_bin(logic[15:0] bin_code);
     opcode = opcode_t'(bin_code[15:13]);
     rega = bin_code[12:10];    
 
@@ -190,6 +210,11 @@ class instruction;
       end
     endcase
   endfunction : from_bin
+  
+  // Return string with coverage information
+  function string get_coverage;
+    return $sformatf("Net - %.2f		RRR - %.2f		RRI ; %.2f		RI : %.2f", cg.get_coverage(), cg.RRR_cover.get_coverage(), cg.RRI_cover.get_coverage(), cg.RI_cover.get_coverage());
+  endfunction
 endclass : instruction
 
 `endif
