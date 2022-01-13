@@ -88,23 +88,29 @@ module toplevel (
 - Datatype ```regfield_t``` 
   - ```logic[2:0]``` type
   - For register address fields in instructions
+
 - Enumeration ```opcode_t```
   - ```logic[2:0]``` type
   - For all 8 instructions with their actual opcodes
+
 - Enumeration ```opcode_format_t```
   - ```logic[2:0]``` type
   - For the 3 instruction formats
   - ```RRR``` : 0
   - ```RRI``` : 1
   - ```RI```  : 2
+
 - A class, ```instruction``` to model the instructions for other reference models
+
 - constraint ```imm_limit```
   - Set limits for immediate values (0 to 1023 for long immediate, -64 to 63 for signed immediate)
   - Higher probability to get 0, and extremum values (-64, 63 for signed immediate, 1023 for long immediate)
+
 - coverpoint ```cg```
   - opcode
   - register fields
   - immediate value
+
 - ```verilog
   function new(
     opcode_t op_in      = opcode_t'(3'b0), 
@@ -116,10 +122,13 @@ module toplevel (
   ```
   - Constructor
   - By default, all values are 0 (```nop``` instruction, ```add r0, r0, r0```)
+
 - ```function string to_string();```
   - Convert the instruction representation to string
+
 - ```function logic[15:0] to_bin();```
   - Convert the instruction representation to binary
+
 - ```function from_bin(logic[15:0] bin_code);```
   - Get the values from binary representation
 

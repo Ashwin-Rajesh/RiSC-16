@@ -30,12 +30,12 @@ SOFTWARE.
 
 // Everything except the instruction memory
 module core #(
-	parameter p_DATA_MEM_SIZE=1024
+	parameter p_DATA_MEM_SIZE=1024              // Length of data memory
 ) (
-    input               clk,
-    input               rst,
-    input[15:0]         instruction,
-    output reg[15:0]    pc
+    input               clk,                    // Main clock signal
+    input               rst,                    // Global reset
+    input[15:0]         instruction,            // Instruction input from instruction memory
+    output reg[15:0]    pc                      // Program counter output to instruction memory
 );
     initial begin
         pc = 0;

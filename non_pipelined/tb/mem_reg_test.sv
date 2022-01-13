@@ -28,103 +28,120 @@ SOFTWARE.
 `include "mem_reg.v"
 `include "mem_reg_ref.svh"
 
+// Test the register file
 module mem_reg_test;
-    localparam p_WORD_LEN = 16;
+  // Configuration parameters
+  localparam p_WORD_LEN = 16;
+  localparam p_MAX_TESTS = 1000;
 
-    wire[15:0] out1;
-    wire[15:0] out2;
+  // Signals to/from the DUT
+  wire[15:0] out1;
+  wire[15:0] out2;
 
-    bit[2:0] src1;
-    bit[2:0] src2;
-    bit[2:0] tgt;
+  bit[2:0] src1;
+  bit[2:0] src2;
+  bit[2:0] tgt;
 
-    bit[15:0] inp;
+  bit[15:0] inp;
 
-    bit clk;
-    bit writeEn;
+  bit clk;
+  bit writeEn;
 
-    bit rst;
+  bit rst;
 
-    mem_reg #(
-        .p_WORD_LEN(16),
-        .p_REG_ADDR_LEN(3),
-        .p_REG_FILE_SIZE(8)
-    ) regfile_dut (.in(inp), .*);
+  // The DUT
+  mem_reg #(
+      .p_WORD_LEN(16),
+      .p_REG_ADDR_LEN(3),
+      .p_REG_FILE_SIZE(8)
+  ) regfile_dut (.in(inp), .*);
 
-    covergroup cg @(posedge clk);
-        coverpoint src1;
-        coverpoint src2;
-        coverpoint tgt iff(writeEn);
+  // The reference model
+  regfile reference;
 
-        coverpoint (tgt == src1) iff(writeEn);
-        coverpoint (tgt == src2) iff(writeEn);
-    endgroup : cg
+  // Covergroup
+  covergroup cg @(posedge clk);
+      coverpoint src1;
+      coverpoint src2;
+      coverpoint tgt iff(writeEn);
 
-    cg cg_inst;
+      coverpoint (tgt == src1) iff(writeEn);
+      coverpoint (tgt == src2) iff(writeEn);
+  endgroup : cg
+  cg cg_inst;
 
-    localparam p_MAX_TESTS = 1000;
+  // Clocking group to drive TB outputs to DUT
+  clocking cb_reg @(posedge clk);
+      output negedge src1;
+      output negedge src2;
+      output negedge tgt;
+      output negedge inp;
+      output negedge writeEn;
 
-    clocking cb_reg @(posedge clk);
-        output negedge src1;
-        output negedge src2;
-        output negedge tgt;
-        output negedge inp;
-        output negedge writeEn;
+      input out1;
+      input out2;
+  endclocking
 
-        input out1;
-        input out2;
-    endclocking
+  // Generate clock signal
+  always #5 clk = ~clk;
 
-    regfile reference;
+  initial begin
+    $display("Starting register test");
 
-    initial begin
-      	$display("Starting register test");
-      	
-        $dumpfile("dump.vcd");
-      	$dumpvars(0, mem_reg_test);
+    // Setup dumpfile
+    $dumpfile("dump.vcd");
+    $dumpvars(0, mem_reg_test);
+
+    // Initialize objects    
+    reference = new();
+    cg_inst = new();
+  
+    #1;
+
+    // Main loop
+    repeat(p_MAX_TESTS) begin
+        // Randomize everything!
+        cb_reg.src1         <= $random;
+        cb_reg.src2         <= $random;
+        cb_reg.tgt          <= $random;
+        cb_reg.inp          <= $random;
+        cb_reg.writeEn    	<= $random;
+
+        // Reset probability is 1 in 100
+        if($urandom(100) == 0)
+          rst = 1;	
+        else
+            rst = 0;
+
+        // Reset reference if required        
+        if(rst == 1)
+          reference.reset();
       
-      	reference = new();
-        cg_inst = new();
+        // Make sure reads match
+        assert (reference.read_reg(src1) === out1) else begin
+          $display("%t Source 1 mismatch. Reg %d : %h(dut) vs %h", $time, src1, out1, reference.read_reg(src1));
+        end;
+        assert (reference.read_reg(src2) === out2) else begin
+          $display("%t Source 2 mismatch. Reg %d : %h(dut) vs %h", $time, src2, out2, reference.read_reg(src2));            
+        end;
+
+        // Make sure outputs are not indeterminate        
+        assert (^out1 !== 1'bx);
+        assert (^out2 !== 1'bx);
+        
+        // Wait for clock
+        @(cb_reg);
       
-      	#1;
-
-        repeat(p_MAX_TESTS) begin
-            cb_reg.src1         <= $random;
-            cb_reg.src2         <= $random;
-            cb_reg.tgt          <= $random;
-            cb_reg.inp          <= $random;
-            cb_reg.writeEn    	<= $random;
-
-          	if($urandom(100) == 0)
-          		rst = 1;	
-            else
-              	rst = 0;
-          
-            if(rst == 1)
-              reference.reset();
-          
-          	assert (reference.read_reg(src1) === out1) else begin
-              $display("%t Source 1 mismatch. Reg %d : %h vs %h", $time, src1, out1, reference.read_reg(src1));
-            end;
-
-          	assert (reference.read_reg(src2) === out2) else begin
-              $display("%t Source 1 mismatch. Reg %d : %h vs %h", $time, src2, out2, reference.read_reg(src2));            
-            end;
-          
-            assert (^out1 !== 1'bx);
-          	assert (^out2 !== 1'bx);
-            
-            @(cb_reg);
-          
-            if(writeEn) begin
-              reference.write_reg(tgt, inp);
-            end
+        // Write to reference if needed
+        if(writeEn) begin
+          reference.write_reg(tgt, inp);
         end
-      	$display("Coverage : %.2f", cg_inst.get_coverage());
-      	$finish();
     end
 
-    always #5 clk = ~clk;
+    // Show coverage information
+    $display("Coverage : %.2f", cg_inst.get_coverage());
+    $finish();
+  end
 
 endmodule
 

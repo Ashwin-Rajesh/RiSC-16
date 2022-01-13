@@ -87,8 +87,5 @@ module mem_reg #(
             if(tgt != 0)
                 memory[tgt] = in;
     end
-  
-  out1_det : assert property (@(posedge clk) ^out1 !== 1'bx);
-  out2_det : assert property (@(posedge clk) ^out2 !== 1'bx);
-        
+            
 endmodule

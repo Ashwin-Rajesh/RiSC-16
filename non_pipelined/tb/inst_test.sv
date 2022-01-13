@@ -28,24 +28,29 @@ SOFTWARE.
 `include "simulator.svh"
 `include "instruction.svh"
 
+// Test that instruction decode and encode works well
 module inst_test;
+  // Configuration parameters
   localparam max_count = 10000;
-  
+
+  // Instruction objects to test  
   instruction inst;
+  instruction inst2;
   
   int i = 0;
   
   initial begin
-    instruction inst2;
     int count = 0;
     
-    inst2 	= new();
-    
-    inst 	= new();
-        
+    inst2 	= new();    
+    inst 	  = new();
+
+    // Main loop
+
     for(i = 0; i < max_count; i = i + 1) begin
       logic[15:0] inst_bin;    
       
+      // Generate random instructions
       if(inst.randomize()) begin
         // Sample for coverage
         inst.cg.sample();
@@ -68,7 +73,8 @@ module inst_test;
       end
     end
     $display("%d inconsistencies detected!", count);
-    
+
+    // Display coverage information
     $display("coverage : %.2f", inst.cg.get_coverage()); 
     $display("Signed imm coverage : %.2f, Long imm coverage : %.2f", inst.cg.sig_imm.get_coverage(), inst.cg.long_imm.get_coverage());
     $display("RRR : %.2f RRI : %.2f RI : %.2f", inst.cg.RRR_cover.get_coverage(), inst.cg.RRI_cover.get_coverage(), inst.cg.RI_cover.get_coverage());

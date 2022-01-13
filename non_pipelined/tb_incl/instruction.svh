@@ -83,14 +83,15 @@ class instruction;
     solve opcode before imm;
   }
   
+  // Coverage collector
   covergroup cg;
     opcode_cover:		coverpoint opcode;
   	
     rega_cover:		coverpoint rega;
     
-    regb_cover:		coverpoint regb;
+    regb_cover:		coverpoint regb iff(format_lookup[opcode] != RI);
     
-    regc_cover:		coverpoint regc;
+    regc_cover:		coverpoint regc iff(format_lookup[opcode] == RRR);
     
     sig_imm : 		coverpoint imm  iff(format_lookup[opcode] == RRI){
       bins zero = {0};
@@ -112,11 +113,12 @@ class instruction;
 
   // Constructor
   function new(
-    opcode_t op_in      = opcode_t'(3'bx), 
-    regflield_t rega_in = regflield_t'(3'bx), 
-    regflield_t regb_in = regflield_t'(3'bx), 
-    regflield_t regc_in = regflield_t'(3'bx), 
-    int imm_in  = int'(64'bx));
+    opcode_t op_in      = opcode_t'(3'b0), 
+    regflield_t rega_in = regflield_t'(3'b0), 
+    regflield_t regb_in = regflield_t'(3'b0), 
+    regflield_t regc_in = regflield_t'(3'b0), 
+    int imm_in  = int'(64'b0)
+  );
     opcode = op_in;
     rega = rega_in;
     regb = regb_in;

@@ -62,11 +62,14 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
     return temp;
   endfunction : to_string
 
+  // Set the instruction to execute next
   function void set_inst(instruction inp);
   	inst = inp;
   endfunction
-  
+
+  // Execute the instruction  
   function void exec_inst();
+    // Define behaviour of each instruction here
     case (inst.opcode)
         ADD : begin
             registers.write_reg(inst.rega, registers.read_reg(inst.regb) + registers.read_reg(inst.regc));
@@ -108,23 +111,21 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
             program_counter = program_counter + 1;
     endcase
     
+    // Ensure that program counter value is valid
     while(program_counter < 0)
       program_counter = 65536 + program_counter;
     
     program_counter = program_counter % 65536;
+
   endfunction : exec_inst
 
-  // function logic[15:0] registers.read_reg(regflield_t reg_idx);
-  //   if(reg_idx == 0)
-  //     return 0;
-  //   else
-  //     return registers[reg_idx];
-  // endfunction
+  // Assertions to verify that current state is valid
+  function void verify_state;
+    assert(program_counter >= 0 && program_counter < 65536);
 
-  // function void registers.write_reg(regflield_t reg_idx, logic[15:0] inp);
-  //   if(reg_idx != 0)
-  //     registers[reg_idx] = inp;
-  // endfunction
+    assert(inst.randomize(null));
+  endfunction
+
 endclass
 
 `endif

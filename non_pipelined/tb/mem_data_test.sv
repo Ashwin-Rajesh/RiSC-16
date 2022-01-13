@@ -28,87 +28,100 @@ SOFTWARE.
 `include "mem_data.v"
 `include "mem_data_ref.svh"
 
+// Test data memory
 module mem_data_test;
-  	localparam p_MEM_SIZE = 1024;
-    localparam p_MAX_TESTS = 100000;
+  // Configuration parameters
+  localparam p_MEM_SIZE = 1024;
+  localparam p_MAX_TESTS = 100000;
 
-  	wire[15:0]       dataOut;   // Data for reading
+  // Signals to/from the DUT
+  wire[15:0]       dataOut;   // Data for reading
+  bit[15:0]        address;   // Address of data
+  bit[15:0]        dataIn;    // Data for writing
+  bit clk;                              // Clock signal
+  bit writeEn;                          // Active high signal for enabling write    
+  bit rst;                              // Reset whole memory to 0
 
-    bit[15:0]        address;   // Address of data
-    bit[15:0]        dataIn;    // Data for writing
+  // The DUT
+  mem_data #(
+      .p_WORD_LEN(16),
+      .p_ADDR_LEN(16),
+      .p_DATA_MEM_SIZE(p_MEM_SIZE)
+  ) datamem_dut (.*);
 
-    bit clk;                              // Clock signal
-    bit writeEn;                          // Active high signal for enabling write    
-    bit rst;                              // Reset whole memory to 0
-  
-    mem_data #(
-        .p_WORD_LEN(16),
-      	.p_ADDR_LEN(16),
-      	.p_DATA_MEM_SIZE(p_MEM_SIZE)
-    ) datamem_dut (.*);
-  
-    covergroup cg @(posedge clk);
-      address_ranges : coverpoint address[$clog2(p_MEM_SIZE)-1:0] {
-        bins addr_range[100] = {[0:p_MEM_SIZE-1]};
-      }
-      select_ranges  : coverpoint address[15:$clog2(p_MEM_SIZE)] {
-        bins addr_range[100] = {[0:2**(16-$clog2(p_MEM_SIZE))]};
-      }
-    endgroup
-  
-    clocking cb_mem @(posedge clk);
-      output negedge address;
-      output negedge dataIn;
+  // The reference model
+  datamem #(p_MEM_SIZE) reference;
 
-      output negedge writeEn;  
-    endclocking
+  // Covergroup
+  covergroup cg @(posedge clk);
+    address_ranges : coverpoint address[$clog2(p_MEM_SIZE)-1:0] {
+      bins addr_range[100] = {[0:p_MEM_SIZE-1]};
+    }
+    select_ranges  : coverpoint address[15:$clog2(p_MEM_SIZE)] {
+      bins addr_range[100] = {[0:2**(16-$clog2(p_MEM_SIZE))]};
+    }
+  endgroup
+  cg cg_inst;
 
-    cg cg_inst;
-                            
-  	datamem #(p_MEM_SIZE) reference;
+  // Clocking block to drive TB outputs to DUT
+  clocking cb_mem @(posedge clk);
+    output negedge address;
+    output negedge dataIn;
 
-    initial begin
-      $display("Starting data memory test");
+    output negedge writeEn;  
+  endclocking
+
+  // Generate clock signal                          
+  always #5 clk = ~clk;
+
+  initial begin
+    $display("Starting data memory test");
+      
+      // Initialize objects
+      reference 	= new();
+      cg_inst		= new();
+
+      // Main loop
+      repeat(p_MAX_TESTS) begin
+          // Random addresses and data
+          cb_mem.address		<= $random;
+          cb_mem.dataIn		  <= $random;
+          cb_mem.writeEn		<= $random;
+
+          // Reset probability 1 in 100          
+          if($urandom(100) == 0)
+            rst = 1;	
+          else
+            rst = 0;
+          
+          // Reset reference model if needed
+          if(rst == 1)
+            reference.reset();
         
-      	reference 	= new();
-      
-      	cg_inst		= new();
+          @(cb_mem);
 
-        repeat(p_MAX_TESTS) begin
-            cb_mem.address		<= $random;
-            cb_mem.dataIn		<= $random;
-            cb_mem.writeEn		<= $random;
-            
-          	if($urandom(100) == 0)
-          		rst = 1;	
-            else
-              	rst = 0;
-          	
-            if(rst == 1)
-              reference.reset();
+          // Check if reads match
+          assert (reference.read_mem(address) == dataOut) else begin
+            $display("Read mismatch. Address %d : %h vs %h", address, dataOut, reference.read_mem(address));
+          end;
+
+          // Make sure we read from a written address at least once
+          if(~writeEn) begin
+            cover_reread : cover ((reference.write_hist.find() with (item == address[$clog2(p_MEM_SIZE)-1:0])) != {});
+          end
           
-          	@(cb_mem);
-          
-            assert (reference.read_mem(address) == dataOut) else begin
-              $display("Read mismatch. Address %d : %h vs %h", address, dataOut, reference.read_mem(address));
-            end;
-          	
-          	if(~writeEn) begin
-              cover_reread : cover ((reference.write_hist.find() with (item == address[$clog2(p_MEM_SIZE)-1:0])) != {});
-            end
-            
-            if(writeEn) begin
-              reference.write_mem(address, dataIn);
-            end
-        end
+          // Write to reference model if needed
+          if(writeEn) begin
+            reference.write_mem(address, dataIn);
+          end
+      end
 
-      	$display("Coverage : %.2f", cg_inst.get_coverage());
-      
-      	$display("Data memory test finished");
-      	$finish();
-    end
-
-    always #5 clk = ~clk;
+      // Display coverage information
+      $display("Coverage : %.2f", cg_inst.get_coverage());
+    
+      $display("Data memory test finished");
+      $finish();
+  end
 
 endmodule
 

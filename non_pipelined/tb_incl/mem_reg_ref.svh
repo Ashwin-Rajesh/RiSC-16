@@ -25,19 +25,23 @@ SOFTWARE.
 `ifndef MEM_REG_REF_SVH
 `define MEM_REG_REF_SVH
 
+// Reference class for the register file
 class regfile;
     bit[15:0] mem_ref[7:0];
 
+    // Constructor
     function new;
         for(int i = 0; i < 8; i = i + 1)
           mem_ref[i] = 0;
     endfunction
 
+    // Write data to register at addr
     function void write_reg(bit[2:0] addr, bit[15:0] data);
         if(addr != 0)
             mem_ref[addr] = data;
     endfunction
 
+    // Read from register at addr
     function bit[15:0] read_reg(bit[2:0] addr);
         if(addr == 0)
             return 0;
@@ -45,6 +49,7 @@ class regfile;
             return mem_ref[addr];
     endfunction
 
+    // Reset register file memory
   	function void reset();
         for(int i = 0; i < 8; i = i + 1)
           mem_ref[i] = 0;    	

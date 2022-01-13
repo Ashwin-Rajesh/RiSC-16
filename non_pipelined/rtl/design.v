@@ -22,7 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-module design(input clk, output[15:0] pc);
+module toplevel (
+  input clk,                  // Global clock
+  output[15:0] pc
+);
 
   localparam p_INST_NUM = 1024;
   localparam p_CODE_FILE = "code.data";

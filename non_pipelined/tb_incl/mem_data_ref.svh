@@ -25,17 +25,20 @@ SOFTWARE.
 `ifndef MEM_DATA_REF_SVH
 `define MEM_DATA_REF_SVH
 
+// Reference class for data memory
 class datamem #(int size = 1024);
-  	bit[15:0] mem_ref[size-1:0];
-  	bit[15:0] write_hist[$];
+  	bit[15:0] mem_ref[size-1:0];		// Memory array
+  	bit[15:0] write_hist[$];			// History of all writes for debugging
   	bit[15:0] write_data_hist[$];
 
+	// Constructor
     function new;
       	for(int i = 0; i < size; i = i + 1)
           	mem_ref[i] = 0;
     endfunction
 
-  function void write_mem(input bit[15:0] addr, bit[15:0] data);
+	// Write to memory
+  	function void write_mem(input bit[15:0] addr, bit[15:0] data);
       while(addr < 0)
         addr = size + addr;
       
@@ -46,11 +49,13 @@ class datamem #(int size = 1024);
       end
     endfunction
 
+	// Read from memory
   	function bit[15:0] read_mem(bit[15:0] addr);
       	if(addr < size)
         	return mem_ref[addr];
     endfunction
 
+	// Reset memory
   	function void reset();
       for(int i = 0; i < size; i = i + 1)
       	mem_ref[i] = 0;    	
