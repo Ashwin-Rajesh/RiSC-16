@@ -1,4 +1,4 @@
-# RiSC-16 tools
+# RiSC-16 utils
 
 Some tools for RiSC-16 development written in python.
 

@@ -49,7 +49,7 @@ RiSC stands for Ridiculously Simple Computer. It is an ISA used for teaching pur
 1) Assembler
 2) Random instruction generator
 
-- For documentation and usage, go to [./tools/readme.md](./tools/readme.md)
+- For documentation and usage, go to [./utils/readme.md](./utils/readme.md)
 
 ---
 
