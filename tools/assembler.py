@@ -173,7 +173,7 @@ def write_code(file_name, bitstream):
 
 def main():
     if(len(sys.argv) == 1):
-        print("No input file name detected. Plesae pass input file name as argument.")
+        print("No input file name detected. Please pass input file name as argument.")
         return
 
     source_file = sys.argv[1]
