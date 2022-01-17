@@ -40,7 +40,6 @@ module mem_data_test;
   bit[15:0]        dataIn;    // Data for writing
   bit clk;                              // Clock signal
   bit writeEn;                          // Active high signal for enabling write    
-  bit rst;                              // Reset whole memory to 0
 
   // The DUT
   mem_data #(
@@ -87,16 +86,6 @@ module mem_data_test;
           cb_mem.address		<= $random;
           cb_mem.dataIn		  <= $random;
           cb_mem.writeEn		<= $random;
-
-          // Reset probability 1 in 100          
-          if($urandom(100) == 0)
-            rst = 1;	
-          else
-            rst = 0;
-          
-          // Reset reference model if needed
-          if(rst == 1)
-            reference.reset();
         
           @(cb_mem);
 

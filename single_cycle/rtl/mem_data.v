@@ -38,8 +38,7 @@ module mem_data #(
     input[p_WORD_LEN-1:0]        dataIn,    // Data for writing
 
     input clk,                              // Clock signal
-    input writeEn,                          // Active high signal for enabling write    
-    input rst                               // Reset whole memory to 0
+    input writeEn
 );
 
     // We cannot simulate 2**ADDR_LEN, so we choose a smaller data memory size
@@ -60,13 +59,8 @@ module mem_data #(
     end
 
     always @(negedge clk) begin
-        // Reset memory to 0
-        if(rst)
-            for (i = 0; i < p_DATA_MEM_SIZE; i = i + 1) begin
-                memory[i] <= 0;
-            end
-        // Write data
-      	else if(writeEn && enable)
+        // Write to memory
+        if(writeEn && enable)
             memory[address_trunc]   <= dataIn;
     end
 

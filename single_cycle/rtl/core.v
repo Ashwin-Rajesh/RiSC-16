@@ -66,8 +66,7 @@ module core #(
 
         .in(tgt_in),               // Input to write
         .clk(clk),                                // Clock signal
-        .writeEn(tgt_write),                            // Write enable
-        .rst(rst)                                 // Reset all stored values to 0
+        .writeEn(tgt_write)                            // Write enable
     );
 
     wire[15:0]  mem_out;
@@ -86,8 +85,7 @@ module core #(
         .dataIn(mem_in),    // Data for writing
 
         .clk(clk),                              // Clock signal
-        .writeEn(mem_wen),                          // Active high signal for enabling write    
-        .rst(rst)                               // Reset whole memory to 0
+        .writeEn(mem_wen)                          // Active high signal for enabling write    
     );
 
     wire[2:0] opcode = instruction[15:13];

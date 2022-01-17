@@ -47,8 +47,6 @@ module mem_reg_test;
   bit clk;
   bit writeEn;
 
-  bit rst;
-
   // The DUT
   mem_reg #(
       .p_WORD_LEN(16),
@@ -106,16 +104,6 @@ module mem_reg_test;
         cb_reg.tgt          <= $random;
         cb_reg.inp          <= $random;
         cb_reg.writeEn    	<= $random;
-
-        // Reset probability is 1 in 100
-        if($urandom(100) == 0)
-          rst = 1;	
-        else
-            rst = 0;
-
-        // Reset reference if required        
-        if(rst == 1)
-          reference.reset();
       
         // Make sure reads match
         assert (reference.read_reg(src1) === out1) else begin
@@ -141,7 +129,7 @@ module mem_reg_test;
     // Show coverage information
     $display("Coverage : %.2f", cg_inst.get_coverage());
     
-    $$display("Finished register test");
+    $display("Finished register test");
     $finish();
   end
 

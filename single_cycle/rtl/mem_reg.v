@@ -39,8 +39,7 @@ module mem_reg #(
 
     input[p_WORD_LEN-1:0]     in,             // Input to write
     input clk,                                // Clock signal
-    input writeEn,                            // Write enable
-    input rst                                 // Reset all stored values to 0
+    input writeEn
 );
 
     // Memory
@@ -60,12 +59,7 @@ module mem_reg #(
     end
 
   	always @(posedge clk) begin : write_block
-        // Reset
-        if(rst)
-          for(i = 1; i < p_REG_FILE_SIZE; i = i + 1)
-                memory[i] <= 0;
-        // Write
-        else if(writeEn)
+        if(writeEn)
             if(tgt != 0)
                 memory[tgt] = in;
     end

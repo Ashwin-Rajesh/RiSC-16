@@ -1,6 +1,6 @@
-# Non-pipelined implementation
+# Single-cycle implementation
 
-The non-pipelined implementation of the RiSC-16 ISA
+The single-cycle implementation of the RiSC-16 ISA
 
 ---
 
@@ -20,8 +20,7 @@ The non-pipelined implementation of the RiSC-16 ISA
       input[p_WORD_LEN-1:0]        dataIn,    // Data for writing
 
       input clk,                              // Clock signal
-      input writeEn,                          // Active high signal for enabling write    
-      input rst                               // Reset whole memory to 0
+      input writeEn
   );
   ```
 
@@ -42,8 +41,7 @@ module mem_reg #(
 
   input[p_WORD_LEN-1:0]     in,             // Input to write
   input clk,                                // Clock signal
-  input writeEn,                            // Write enable
-  input rst                                 // Reset all stored values to 0
+  input writeEn
 );
 ```
 
@@ -249,3 +247,45 @@ module toplevel (
   - Inaccuracy in JALR instruction execution by the simulator when both rega and regb are the same
 - 100,000 random instructions were generated and used for verification. Since the state was the same throughout, we can be reasonable confident that the reference design and RTL design are equivalent.
 - There are no makefiles or scripts to run these because i used EDA playground to run them. Access it [here](https://www.edaplayground.com/x/H8RE)
+
+---
+
+## Synthesis
+
+All synthesis results are for 2kB (1024 word) RAM and 2kB (1024 word) instruction memory (randomly generated instructions).
+
+Initially, I had quite ignoranlty, put a single cycle reset for the data memory and register file. This turned out to be quite expensive. The logic utilization was :
+
+|          Site Type         |  Used | Available | Util% |
+|---|---|---|---|
+| Slice LUTs*                | 10443 |     63400 | 16.47 |
+|   LUT as Logic             | 10419 |     63400 | 16.43 |
+|   LUT as Memory            |    24 |     19000 |  0.13 |
+|     LUT as Distributed RAM |    24 |           |       |
+|     LUT as Shift Register  |     0 |           |       |
+| Slice Registers            | 16412 |    126800 | 12.94 |
+|   Register as Flip Flop    | 16412 |    126800 | 12.94 |
+|   Register as Latch        |     0 |    126800 |  0.00 |
+| F7 Muxes                   |  2307 |     31700 |  7.28 |
+| F8 Muxes                   |  1140 |     15850 |  7.19 |
+
+However, when the reset was removed from the data memory and register file, the logic utilization became :
+
+|          Site Type         | Used | Available | Util% |
+|---|---|---|---|
+| Slice LUTs*                |  806 |     63400 |  1.27 |
+|   LUT as Logic             |  526 |     63400 |  0.83 |
+|   LUT as Memory            |  280 |     19000 |  1.47 |
+|     LUT as Distributed RAM |  280 |           |       |
+|     LUT as Shift Register  |    0 |           |       |
+| Slice Registers            |   26 |    126800 |  0.02 |
+|   Register as Flip Flop    |   26 |    126800 |  0.02 |
+|   Register as Latch        |    0 |    126800 |  0.00 |
+| F7 Muxes                   |  256 |     31700 |  0.81 |
+| F8 Muxes                   |  128 |     15850 |  0.81 |
+
+That was a > 10 times improvement!! The previous version used way too many LUTs for logic than the CPU needed.
+
+This is because a single-cycle reset of memory is very expensive to implement. Here, for memory, we use distributed RAM where the LUT SRAM bits are written to using an address input. But, we can only write to one bit at a time. We cannot reset all values in the LUT at once.
+
+Still, distributed RAM (LUTs) are being used instead of block RAMs to implement memory because the read is asynchronous. To use block RAM, the read needs to synchronous, requiring a multi-cycle design. This will be our next challenge!
