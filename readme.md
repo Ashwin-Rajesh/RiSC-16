@@ -38,7 +38,7 @@ RiSC stands for Ridiculously Simple Computer. It is an ISA used for teaching pur
   - Testing by comparing results of reference model and RTL design using **constrained random stimulus**
 - Documentation : [./non_pipelined/readme.md](non_pipelined/readme.md)
 
-- Register file was **formally verified**
+- Register file was **formally verified** using symbiyosys
 
 ---
 
