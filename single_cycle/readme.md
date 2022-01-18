@@ -74,7 +74,7 @@ module core (
 
 #### ```design.v```
 - Toplevel module
-- Integrates core and instruction memory
+- Integrates core, instruction memory and data memory
 ```verilog
 module toplevel (
   input clk,                  // Global clock
@@ -82,6 +82,12 @@ module toplevel (
 );
 ```
 - Reads from the file, ```code.data``` to initialize instruction memory
+
+The toplevel structure looks like this :
+
+![Block diagram](../docs/RiSC16_single_cycle_impl.drawio.svg)
+
+Notes : There is also a little bit of "glue" logic that makes sure that the addresses to data memory are valid (in its boundary) when writing and reading.
 
 ---
 
