@@ -31,33 +31,36 @@ SOFTWARE.
 // Test data memory
 module mem_data_test;
   // Configuration parameters
-  localparam p_MEM_SIZE = 1024;
-  localparam p_MAX_TESTS = 100000;
+  localparam p_ADDR_LEN 	= 10;
+  localparam p_MAX_TESTS 	= 100000;
+  localparam p_MEM_SIZE		= 2 ** p_ADDR_LEN;
 
   // Signals to/from the DUT
-  wire[15:0]       dataOut;   // Data for reading
-  bit[15:0]        address;   // Address of data
-  bit[15:0]        dataIn;    // Data for writing
-  bit clk;                              // Clock signal
-  bit writeEn;                          // Active high signal for enabling write    
+  wire[15:0]       		dataOut;   // Data for reading
+  bit[p_ADDR_LEN-1:0]   address;   // Address of data
+  bit[15:0]        		dataIn;    // Data for writing
+  bit clk;                         // Clock signal
+  bit writeEn;                     // Active high signal for enabling write    
 
   // The DUT
   mem_data #(
       .p_WORD_LEN(16),
-      .p_ADDR_LEN(16),
-      .p_DATA_MEM_SIZE(p_MEM_SIZE)
-  ) datamem_dut (.*);
+      .p_ADDR_LEN(p_ADDR_LEN)
+  ) datamem_dut (
+    .i_clk(clk),
+    .i_wr_en(writeEn),
+    .i_addr(address),
+    .o_rd_data(dataOut),
+    .i_wr_data(dataIn)
+  );
 
   // The reference model
   datamem #(p_MEM_SIZE) reference;
 
   // Covergroup
   covergroup cg @(posedge clk);
-    address_ranges : coverpoint address[$clog2(p_MEM_SIZE)-1:0] {
+    address_ranges : coverpoint address {
       bins addr_range[100] = {[0:p_MEM_SIZE-1]};
-    }
-    select_ranges  : coverpoint address[15:$clog2(p_MEM_SIZE)] {
-      bins addr_range[10] = {[0:2**(16-$clog2(p_MEM_SIZE))]};
     }
   endgroup
   cg cg_inst;
@@ -93,11 +96,6 @@ module mem_data_test;
           assert (reference.read_mem(address) == dataOut) else begin
             $display("Read mismatch. Address %d : %h vs %h", address, dataOut, reference.read_mem(address));
           end;
-
-          // Make sure we read from a written address at least once
-          if(~writeEn) begin
-            cover_reread : cover ((reference.write_hist.find() with (item == address[$clog2(p_MEM_SIZE)-1:0])) != {});
-          end
           
           // Write to reference model if needed
           if(writeEn) begin

@@ -32,18 +32,19 @@ SOFTWARE.
 module core #(
 	parameter p_DATA_MEM_SIZE=1024              // Length of data memory
 ) (
-    input               clk,                    // Main clock signal
-    input               rst,                    // Global reset
-    input[15:0]         instruction,            // Instruction input from instruction memory
-    output reg[15:0]    pc                      // Program counter output to instruction memory
+    input               i_clk,                  // Main clock signal
+    input               i_rst,                  // Global reset
+
+    input[15:0]         i_inst,                 // Instruction input from instruction memory
+    output reg[15:0]    o_pc                    // Program counter output to instruction memory
 );
     initial begin
-        pc = 0;
+        o_pc = 0;
     end
 
-    wire[15:0]  reg1_out;
-    wire[15:0]  reg2_out;
-    reg[15:0]   tgt_in     = 0;
+    wire[15:0]  w_reg1_out;
+    wire[15:0]  w_reg2_out;
+    reg[15:0]   r_tgt_in     = 0;
 
     reg[2:0]    reg1 = 0;
     reg[2:0]    reg2 = 0;
@@ -57,38 +58,40 @@ module core #(
         .p_REG_ADDR_LEN(3),
         .p_REG_FILE_SIZE(8)
     ) regfile (
-        .out1(reg1_out),            // Read output 1
-        .out2(reg2_out),            // Read output 2
-
-        .src1(reg1),                // Read address 1
-        .src2(reg2),                // Read address 2
-        .tgt(tgt),                 // Write register address
-
-        .in(tgt_in),               // Input to write
-        .clk(clk),                                // Clock signal
-        .writeEn(tgt_write)                            // Write enable
+        .i_clk(i_clk),
+        
+        .i_src1(reg1),
+        .i_src2(reg2),
+        .i_tgt(tgt),
+        
+        .o_src1_data(w_reg1_out),
+        .o_src2_data(w_reg2_out),
+        .i_tgt_data(r_tgt_in),
+        
+        .i_wr_en(tgt_write)
     );
 
-    wire[15:0]  mem_out;
+    wire[15:0] temp_mem_out;
+
     reg[15:0]   mem_addr;
     reg[15:0]   mem_in;
+    wire[15:0]  mem_out = mem_addr < p_DATA_MEM_SIZE ? temp_mem_out : 0;
     reg mem_wen;
 
     mem_data #(
-      	.p_DATA_MEM_SIZE(p_DATA_MEM_SIZE),
         .p_WORD_LEN(16),
-        .p_ADDR_LEN(16)
+        .p_ADDR_LEN($clog2(p_DATA_MEM_SIZE))
     ) data_mem (
-        .dataOut(mem_out),   // Data for reading
+        .i_clk(i_clk),
         
-        .address(mem_addr),   // Address of data
-        .dataIn(mem_in),    // Data for writing
-
-        .clk(clk),                              // Clock signal
-        .writeEn(mem_wen)                          // Active high signal for enabling write    
+        .o_rd_data(temp_mem_out),
+        .i_addr(mem_addr),
+        .i_wr_data(mem_in),
+        
+      	.i_wr_en(mem_wen && mem_addr < p_DATA_MEM_SIZE)
     );
 
-    wire[2:0] opcode = instruction[15:13];
+    wire[2:0] opcode = i_inst[15:13];
     
     localparam ADD = 0,
         ADDI = 1,
@@ -99,13 +102,13 @@ module core #(
         BEQ  = 6,
         JALR = 7;
 
-    wire[2:0] rega = instruction[12:10];
-    wire[2:0] regb = instruction[9:7];
-    wire[2:0] regc = instruction[2:0];
+    wire[2:0] rega = i_inst[12:10];
+    wire[2:0] regb = i_inst[9:7];
+    wire[2:0] regc = i_inst[2:0];
 
-    wire[9:0] long_imm = instruction[9:0];
+    wire[9:0] long_imm = i_inst[9:0];
 
-    wire[6:0] sign_imm = instruction[6:0];
+    wire[6:0] sign_imm = i_inst[6:0];
 
     wire[15:0] sign_imm_ext = {{25{sign_imm[6]}}, sign_imm};
 
@@ -159,7 +162,7 @@ module core #(
     always @(*) begin
         case(opcode)
             ADD: begin
-                tgt_in      <= reg1_out + reg2_out;
+                r_tgt_in    <= w_reg1_out + w_reg2_out;
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
@@ -167,7 +170,7 @@ module core #(
                 mem_wen     <= 1'b0;
             end
             ADDI: begin
-                tgt_in      <= reg1_out + sign_imm_ext;
+                r_tgt_in    <= w_reg1_out + sign_imm_ext;
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
@@ -175,7 +178,7 @@ module core #(
                 mem_wen     <= 1'b0;
             end
             NAND: begin
-              	tgt_in      <= ~(reg1_out & reg2_out);
+              	r_tgt_in    <= ~(w_reg1_out & w_reg2_out);
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
@@ -183,7 +186,7 @@ module core #(
                 mem_wen     <= 1'b0;
             end
             LUI: begin
-                tgt_in      <= {long_imm, 6'b0};
+                r_tgt_in    <= {long_imm, 6'b0};
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
@@ -191,23 +194,23 @@ module core #(
                 mem_wen     <= 1'b0;
             end
             SW: begin
-                tgt_in      <= 15'b0;
+                r_tgt_in    <= 15'b0;
                 tgt_write   <= 1'b0;
 
-                mem_in      <= reg1_out;
-                mem_addr    <= reg2_out + sign_imm_ext;
+                mem_in      <= w_reg1_out;
+                mem_addr    <= w_reg2_out + sign_imm_ext;
                 mem_wen     <= 1'b1;
             end
             LW: begin
-                mem_addr    <= reg1_out + sign_imm_ext;
-                tgt_in      <= mem_out;
+                mem_addr    <= w_reg1_out + sign_imm_ext;
+                r_tgt_in    <= mem_out;
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             BEQ: begin
-                tgt_in      <= 15'b0;
+                r_tgt_in    <= 15'b0;
                 tgt_write   <= 1'b0;
 
                 mem_in      <= 15'b0;
@@ -215,7 +218,7 @@ module core #(
                 mem_wen     <= 1'b0;
             end
             JALR: begin
-                tgt_in      <= pc + 1;
+                r_tgt_in    <= o_pc + 1;
                 tgt_write   <= 1'b1;
 
                 mem_in      <= 15'b0;
@@ -225,23 +228,23 @@ module core #(
         endcase
     end
 
-    always @(posedge clk) begin
-        if(rst) begin
-          pc = 0;
+    always @(posedge i_clk) begin
+        if(i_rst) begin
+          o_pc = 0;
         end
         else
           case(opcode)
               ADD, ADDI, NAND, LUI, SW, LW : begin
-                  pc      <= pc + 1;
+                  o_pc      <= o_pc + 1;
               end
               BEQ: begin
-                  if(reg1_out == reg2_out)
-                      pc      <= pc + sign_imm_ext;
+                  if(w_reg1_out == w_reg2_out)
+                      o_pc      <= o_pc + sign_imm_ext;
                   else
-                      pc      <= pc + 1;
+                      o_pc      <= o_pc + 1;
               end
               JALR: begin
-                  pc  <= reg1_out;
+                  o_pc  <= w_reg1_out;
               end
           endcase
     end

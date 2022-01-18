@@ -30,38 +30,40 @@ module mem_reg #(
     parameter p_REG_ADDR_LEN    = 3,
     parameter p_REG_FILE_SIZE   = 8
 ) (
-    output[p_WORD_LEN-1:0]    out1,           // Read output 1
-    output[p_WORD_LEN-1:0]    out2,           // Read output 2
+    input i_clk,                                // Clock signal
 
-    input[p_REG_ADDR_LEN-1:0]      src1,      // Read address 1
-    input[p_REG_ADDR_LEN-1:0]      src2,      // Read address 2
-    input[p_REG_ADDR_LEN-1:0]      tgt,       // Write register address
+    input[p_REG_ADDR_LEN-1:0]     i_src1,      // Read address 1
+    input[p_REG_ADDR_LEN-1:0]     i_src2,      // Read address 2
+  	input[p_REG_ADDR_LEN-1:0]     i_tgt,       // Write register address
 
-    input[p_WORD_LEN-1:0]     in,             // Input to write
-    input clk,                                // Clock signal
-    input writeEn
+    output[p_WORD_LEN-1:0]        o_src1_data, // Read output 1 (asynchronous)
+    output[p_WORD_LEN-1:0]        o_src2_data, // Read output 2 (asynchronous)
+    input[p_WORD_LEN-1:0]         i_tgt_data,  // Input to write to the target (on posedge)
+
+    input i_wr_en                              // High to write on posedge
 );
 
     // Memory
-    reg [p_WORD_LEN-1:0] memory[p_REG_FILE_SIZE-1:1];
+    reg [p_WORD_LEN-1:0] r_memory[p_REG_FILE_SIZE-1:1];
     
     // For iteration
     integer i;
 
     // Outputs
-  	assign out1 = (src1 === 0) ? 0 : memory[src1];
-  	assign out2 = (src2 === 0) ? 0 : memory[src2];
+  	assign o_src1_data = (i_src1 === 0) ? 0 : r_memory[i_src1];
+  	assign o_src2_data = (i_src2 === 0) ? 0 : r_memory[i_src2];
 
     // Initial values are 0
     initial begin
       for(i = 1; i < p_REG_FILE_SIZE; i = i + 1)
-            memory[i] <= 0;
+            r_memory[i] <= 0;
     end
 
-  	always @(posedge clk) begin : write_block
-        if(writeEn)
-            if(tgt != 0)
-                memory[tgt] = in;
+    // Write on posedge
+  	always @(posedge i_clk) begin : write_block
+        if(i_wr_en)
+            if(i_tgt != 0)
+                r_memory[i_tgt] = i_tgt_data;
     end
             
 endmodule

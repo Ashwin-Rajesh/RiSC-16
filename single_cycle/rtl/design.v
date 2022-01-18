@@ -42,10 +42,10 @@ module toplevel (
   end
 
   core #(.p_DATA_MEM_SIZE(1024)) processor_core (
-      .clk(clk),
-      .rst(0),
-      .instruction(memory[pc]),
-      .pc(pc)
+      .i_clk(clk),
+      .i_rst(0),
+      .i_inst(memory[pc]),
+      .o_pc(pc)
   );
   
 endmodule

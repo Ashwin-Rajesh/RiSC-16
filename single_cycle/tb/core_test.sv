@@ -52,7 +52,12 @@ module core_test;
 	// The DUT	
 	core #(
 		.p_DATA_MEM_SIZE(p_DATA_COUNT)
-	) core_dut (.instruction(inst_reg), .*);
+	) core_dut (
+		.i_clk(clk),
+		.i_rst(rst),
+		.i_inst(inst_reg),
+		.o_pc(pc)
+	);
 	
 	// The reference model
 	simulator #(

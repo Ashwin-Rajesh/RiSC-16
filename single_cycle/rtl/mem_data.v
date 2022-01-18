@@ -26,46 +26,42 @@ SOFTWARE.
 `define MEM_DATA_V
 
 // Data memory
-
 module mem_data #(
-    parameter p_DATA_MEM_SIZE = 1024,
-    parameter p_WORD_LEN = 16,
-    parameter p_ADDR_LEN = 16
+    parameter p_WORD_LEN = 16,                  // Number of bits in a word
+    parameter p_ADDR_LEN = 10,                  // Number of addressing lines
+    localparam p_MEM_SIZE = 2 ** p_ADDR_LEN     // Number of words
 ) (
-    output[p_WORD_LEN-1:0]       dataOut,   // Data for reading
-    
-    input[p_ADDR_LEN-1:0]        address,   // Address of data
-    input[p_WORD_LEN-1:0]        dataIn,    // Data for writing
+    input i_clk,                                // Clock signal
+    input i_wr_en,                              // High to write on positive edge
 
-    input clk,                              // Clock signal
-    input writeEn
+    input[p_ADDR_LEN-1:0]        i_addr,        // Address of data
+    output[p_WORD_LEN-1:0]       o_rd_data,     // Data for reading (asynchronous)
+  	input[p_WORD_LEN-1:0]        i_wr_data      // Data for writing (on posedge)
 );
 
-    // We cannot simulate 2**ADDR_LEN, so we choose a smaller data memory size
-  	wire[$clog2(p_DATA_MEM_SIZE)-1:0] address_trunc = address[$clog2(p_DATA_MEM_SIZE)-1:0];
+    // Truncated address bus
+  	wire[$clog2(p_MEM_SIZE)-1:0] w_addr_trunc = i_addr[$clog2(p_MEM_SIZE)-1:0];
 
-  	wire enable = ~(|address[p_ADDR_LEN-1:$clog2(p_DATA_MEM_SIZE)]);
-  
     // Memory array
-	reg[p_WORD_LEN-1:0] memory[p_DATA_MEM_SIZE-1:0];
+	reg[p_WORD_LEN-1:0] r_memory[p_MEM_SIZE-1:0];
 
     integer i;
 
     // Initial memory content is 0
     initial begin
-        for (i = 0; i < p_DATA_MEM_SIZE; i = i + 1) begin
-                memory[i] <= 0;
+        for (i = 0; i < p_MEM_SIZE; i = i + 1) begin
+                r_memory[i] <= 0;
         end
     end
 
-    always @(negedge clk) begin
+    always @(negedge i_clk) begin
         // Write to memory
-        if(writeEn && enable)
-            memory[address_trunc]   <= dataIn;
+        if(i_wr_en)
+            r_memory[w_addr_trunc]   <= i_wr_data;
     end
 
     // Asynchronous read
-  	assign dataOut = enable ? memory[address_trunc] : 0;
+  	assign o_rd_data = r_memory[w_addr_trunc];
 endmodule
 
 `endif

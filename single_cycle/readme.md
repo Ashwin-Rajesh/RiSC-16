@@ -10,17 +10,16 @@ The single-cycle implementation of the RiSC-16 ISA
 - Data memory
   ```verilog
   module mem_data #(
-      parameter p_DATA_MEM_SIZE = 1024,       // Length of the memory (in number of words)
-      parameter p_WORD_LEN = 16,              // Word length in bits
-      parameter p_ADDR_LEN = 16               // Address bus length
+      parameter p_WORD_LEN = 16,                  // Number of bits in a word
+      parameter p_ADDR_LEN = 10,                  // Number of addressing lines
+      localparam p_MEM_SIZE = 2 ** p_ADDR_LEN     // Number of words
   ) (
-      output[p_WORD_LEN-1:0]       dataOut,   // Data for reading
-      
-      input[p_ADDR_LEN-1:0]        address,   // Address of data
-      input[p_WORD_LEN-1:0]        dataIn,    // Data for writing
+      input i_clk,                                // Clock signal
+      input i_wr_en,                              // High to write on positive edge
 
-      input clk,                              // Clock signal
-      input writeEn
+      input[p_ADDR_LEN-1:0]        i_addr,        // Address of data
+      output[p_WORD_LEN-1:0]       o_rd_data,     // Data for reading (asynchronous)
+      input[p_WORD_LEN-1:0]        i_wr_data      // Data for writing (on posedge)
   );
   ```
 
@@ -28,20 +27,21 @@ The single-cycle implementation of the RiSC-16 ISA
 - Register file
 ```verilog
 module mem_reg #(
-  parameter p_WORD_LEN        = 16,         // Word length in bits
-  parameter p_REG_ADDR_LEN    = 3,          // Register address length
-  parameter p_REG_FILE_SIZE   = 8           // Num ber of registers
+    parameter p_WORD_LEN        = 16,
+    parameter p_REG_ADDR_LEN    = 3,
+    parameter p_REG_FILE_SIZE   = 8
 ) (
-  output[p_WORD_LEN-1:0]    out1,           // Read output 1
-  output[p_WORD_LEN-1:0]    out2,           // Read output 2
+    input i_clk,                                // Clock signal
 
-  input[p_REG_ADDR_LEN-1:0]      src1,      // Read address 1
-  input[p_REG_ADDR_LEN-1:0]      src2,      // Read address 2
-  input[p_REG_ADDR_LEN-1:0]      tgt,       // Write register address
+    input[p_REG_ADDR_LEN-1:0]     i_src1,      // Read address 1
+    input[p_REG_ADDR_LEN-1:0]     i_src2,      // Read address 2
+  	input[p_REG_ADDR_LEN-1:0]     i_tgt,       // Write register address
 
-  input[p_WORD_LEN-1:0]     in,             // Input to write
-  input clk,                                // Clock signal
-  input writeEn
+    output[p_WORD_LEN-1:0]        o_src1_data, // Read output 1 (asynchronous)
+    output[p_WORD_LEN-1:0]        o_src2_data, // Read output 2 (asynchronous)
+    input[p_WORD_LEN-1:0]         i_tgt_data,  // Input to write to the target (on posedge)
+
+    input i_wr_en                              // High to write on posedge
 );
 ```
 
@@ -50,12 +50,13 @@ module mem_reg #(
 - Uses ```mem_reg``` and ```mem_data``` modules
 ```verilog
 module core #(
-parameter p_DATA_MEM_SIZE=1024              // Length of data memory
+	parameter p_DATA_MEM_SIZE=1024              // Length of data memory
 ) (
-    input               clk,                    // Main clock signal
-    input               rst,                    // Global reset
-    input[15:0]         instruction,            // Instruction input from instruction memory
-    output reg[15:0]    pc                      // Program counter output to instruction memory
+    input               i_clk,                  // Main clock signal
+    input               i_rst,                  // Global reset
+
+    input[15:0]         i_inst,                 // Instruction input from instruction memory
+    output reg[15:0]    o_pc                    // Program counter output to instruction memory
 );
 ```
 - Has 2 combinational always blocks. Functions :
