@@ -54,7 +54,7 @@ module mem_data #(
         end
     end
 
-    always @(negedge i_clk) begin
+    always @(posedge i_clk) begin
         // Write to memory
         if(i_wr_en)
             r_memory[w_addr_trunc]   <= i_wr_data;
