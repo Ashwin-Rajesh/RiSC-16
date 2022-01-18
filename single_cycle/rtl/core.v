@@ -44,13 +44,13 @@ module core #(
 
     wire[15:0]  w_reg1_out;
     wire[15:0]  w_reg2_out;
-    reg[15:0]   r_tgt_in     = 0;
+    reg[15:0]   r_tgt_in    = 0;
 
-    reg[2:0]    reg1 = 0;
-    reg[2:0]    reg2 = 0;
-    reg[2:0]    tgt = 0;
+    reg[2:0]    r_reg1_addr = 0;
+    reg[2:0]    r_reg2_addr = 0;
+    reg[2:0]    r_tgt_addr  = 0;
 
-    reg tgt_write = 0;
+    reg         r_tgt_wr_en = 0;
 
     // Register module
     mem_reg #(
@@ -60,22 +60,22 @@ module core #(
     ) regfile (
         .i_clk(i_clk),
         
-        .i_src1(reg1),
-        .i_src2(reg2),
-        .i_tgt(tgt),
+        .i_src1(r_reg1_addr),
+        .i_src2(r_reg2_addr),
+        .i_tgt(r_tgt_addr ),
         
         .o_src1_data(w_reg1_out),
         .o_src2_data(w_reg2_out),
         .i_tgt_data(r_tgt_in),
         
-        .i_wr_en(tgt_write)
+        .i_wr_en(r_tgt_wr_en)
     );
 
-    wire[15:0] temp_mem_out;
+    wire[15:0]  w_mem_out;
 
-    reg[15:0]   mem_addr;
-    reg[15:0]   mem_in;
-    wire[15:0]  mem_out = mem_addr < p_DATA_MEM_SIZE ? temp_mem_out : 0;
+    reg[15:0]   r_mem_addr;
+    reg[15:0]   r_mem_wr;
+    wire[15:0]  w_mem_rd = r_mem_addr < p_DATA_MEM_SIZE ? w_mem_out : 0;
     reg mem_wen;
 
     mem_data #(
@@ -84,11 +84,11 @@ module core #(
     ) data_mem (
         .i_clk(i_clk),
         
-        .o_rd_data(temp_mem_out),
-        .i_addr(mem_addr),
-        .i_wr_data(mem_in),
+        .o_rd_data(w_mem_out),
+        .i_addr(r_mem_addr),
+        .i_wr_data(r_mem_wr),
         
-      	.i_wr_en(mem_wen && mem_addr < p_DATA_MEM_SIZE)
+      	.i_wr_en(mem_wen && r_mem_addr < p_DATA_MEM_SIZE)
     );
 
     wire[2:0] opcode = i_inst[15:13];
@@ -102,58 +102,58 @@ module core #(
         BEQ  = 6,
         JALR = 7;
 
-    wire[2:0] rega = i_inst[12:10];
-    wire[2:0] regb = i_inst[9:7];
-    wire[2:0] regc = i_inst[2:0];
+    wire[2:0] w_rega = i_inst[12:10];
+    wire[2:0] w_regb = i_inst[9:7];
+    wire[2:0] w_regc = i_inst[2:0];
 
-    wire[9:0] long_imm = i_inst[9:0];
+    wire[9:0] w_long_imm = i_inst[9:0];
 
-    wire[6:0] sign_imm = i_inst[6:0];
+    wire[6:0] w_sign_imm = i_inst[6:0];
 
-    wire[15:0] sign_imm_ext = {{25{sign_imm[6]}}, sign_imm};
+    wire[15:0] w_sign_imm_ext = {{25{w_sign_imm[6]}}, w_sign_imm};
 
     // Get register mapping (from instruction to register file)
     always @(*) begin
         case(opcode)
             ADD: begin
-                tgt     = rega;
-                reg1    = regb;
-                reg2    = regc;
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = w_regb;
+                r_reg2_addr    = w_regc;
             end
             ADDI: begin
-                tgt     = rega;
-                reg1    = regb;
-                reg2    = 3'b0;
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = w_regb;
+                r_reg2_addr    = 3'b0;
             end
             NAND: begin
-                tgt     = rega;
-                reg1    = regb;
-                reg2    = regc;
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = w_regb;
+                r_reg2_addr    = w_regc;
             end
             LUI: begin
-                tgt     = rega;
-                reg1    = 3'b0;
-                reg2    = 3'b0;                
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = 3'b0;
+                r_reg2_addr    = 3'b0;                
             end
             SW: begin
-                tgt     = 3'b0;
-                reg1    = rega;
-                reg2    = regb;
+                r_tgt_addr     = 3'b0;
+                r_reg1_addr    = w_rega;
+                r_reg2_addr    = w_regb;
             end
             LW: begin
-                tgt     = rega;
-                reg1    = regb;
-                reg2    = 3'b0;
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = w_regb;
+                r_reg2_addr    = 3'b0;
             end
             BEQ: begin
-                tgt     = 3'b0;
-                reg1    = rega;
-                reg2    = regb;
+                r_tgt_addr     = 3'b0;
+                r_reg1_addr    = w_rega;
+                r_reg2_addr    = w_regb;
             end
             JALR: begin
-                tgt     = rega;
-                reg1    = regb;
-                reg2    = 3'b0;                
+                r_tgt_addr     = w_rega;
+                r_reg1_addr    = w_regb;
+                r_reg2_addr    = 3'b0;                
             end
         endcase
     end
@@ -163,66 +163,66 @@ module core #(
         case(opcode)
             ADD: begin
                 r_tgt_in    <= w_reg1_out + w_reg2_out;
-                tgt_write   <= 1'b1;
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             ADDI: begin
-                r_tgt_in    <= w_reg1_out + sign_imm_ext;
-                tgt_write   <= 1'b1;
+                r_tgt_in    <= w_reg1_out + w_sign_imm_ext;
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             NAND: begin
               	r_tgt_in    <= ~(w_reg1_out & w_reg2_out);
-                tgt_write   <= 1'b1;
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             LUI: begin
-                r_tgt_in    <= {long_imm, 6'b0};
-                tgt_write   <= 1'b1;
+                r_tgt_in    <= {w_long_imm, 6'b0};
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             SW: begin
                 r_tgt_in    <= 15'b0;
-                tgt_write   <= 1'b0;
+                r_tgt_wr_en <= 1'b0;
 
-                mem_in      <= w_reg1_out;
-                mem_addr    <= w_reg2_out + sign_imm_ext;
+                r_mem_wr    <= w_reg1_out;
+                r_mem_addr  <= w_reg2_out + w_sign_imm_ext;
                 mem_wen     <= 1'b1;
             end
             LW: begin
-                mem_addr    <= w_reg1_out + sign_imm_ext;
-                r_tgt_in    <= mem_out;
-                tgt_write   <= 1'b1;
+                r_mem_addr  <= w_reg1_out + w_sign_imm_ext;
+                r_tgt_in    <= w_mem_rd;
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
+                r_mem_wr    <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             BEQ: begin
                 r_tgt_in    <= 15'b0;
-                tgt_write   <= 1'b0;
+                r_tgt_wr_en <= 1'b0;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
             JALR: begin
                 r_tgt_in    <= o_pc + 1;
-                tgt_write   <= 1'b1;
+                r_tgt_wr_en <= 1'b1;
 
-                mem_in      <= 15'b0;
-                mem_addr    <= 15'b0;
+                r_mem_wr    <= 15'b0;
+                r_mem_addr  <= 15'b0;
                 mem_wen     <= 1'b0;
             end
         endcase
@@ -239,7 +239,7 @@ module core #(
               end
               BEQ: begin
                   if(w_reg1_out == w_reg2_out)
-                      o_pc      <= o_pc + sign_imm_ext;
+                      o_pc      <= o_pc + w_sign_imm_ext;
                   else
                       o_pc      <= o_pc + 1;
               end
