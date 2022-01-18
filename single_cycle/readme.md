@@ -47,16 +47,23 @@ module mem_reg #(
 
 #### ```core.v```
 - Control and ALU
-- Uses ```mem_reg``` and ```mem_data``` modules
+- Uses ```mem_reg``` module
+- Data memory is outside the core
 ```verilog
-module core #(
-	parameter p_DATA_MEM_SIZE=1024              // Length of data memory
-) (
+module core (
+    // Control signals
     input               i_clk,                  // Main clock signal
     input               i_rst,                  // Global reset
 
+    // Instruction memory interface
     input[15:0]         i_inst,                 // Instruction input from instruction memory
-    output reg[15:0]    o_pc                    // Program counter output to instruction memory
+    output reg[15:0]    o_pc,                   // Program counter output to instruction memory
+
+    // Data memory interface
+    input[15:0]         i_mem_rd_data,          // Data read from memory
+    output reg[15:0]    o_mem_wr_data,          // Data to write to memory
+    output reg[15:0]    o_mem_addr,             // Address to write or read
+    output reg          o_mem_wr_en             // Write enable for memory
 );
 ```
 - Has 2 combinational always blocks. Functions :

@@ -25,18 +25,23 @@ SOFTWARE.
 `ifndef CORE_V
 `define CORE_V
 
-`include "mem_data.v"
 `include "mem_reg.v"
 
 // Everything except the instruction memory
-module core #(
-	parameter p_DATA_MEM_SIZE=1024              // Length of data memory
-) (
+module core (
+    // Control signals
     input               i_clk,                  // Main clock signal
     input               i_rst,                  // Global reset
 
+    // Instruction memory interface
     input[15:0]         i_inst,                 // Instruction input from instruction memory
-    output reg[15:0]    o_pc                    // Program counter output to instruction memory
+    output reg[15:0]    o_pc,                   // Program counter output to instruction memory
+
+    // Data memory interface
+    input[15:0]         i_mem_rd_data,          // Data read from memory
+    output reg[15:0]    o_mem_wr_data,          // Data to write to memory
+    output reg[15:0]    o_mem_addr,             // Address to write or read
+    output reg          o_mem_wr_en             // Write enable for memory
 );
     initial begin
         o_pc = 0;
@@ -69,26 +74,6 @@ module core #(
         .i_tgt_data(r_tgt_in),
         
         .i_wr_en(r_tgt_wr_en)
-    );
-
-    wire[15:0]  w_mem_out;
-
-    reg[15:0]   r_mem_addr;
-    reg[15:0]   r_mem_wr;
-    wire[15:0]  w_mem_rd = r_mem_addr < p_DATA_MEM_SIZE ? w_mem_out : 0;
-    reg mem_wen;
-
-    mem_data #(
-        .p_WORD_LEN(16),
-        .p_ADDR_LEN($clog2(p_DATA_MEM_SIZE))
-    ) data_mem (
-        .i_clk(i_clk),
-        
-        .o_rd_data(w_mem_out),
-        .i_addr(r_mem_addr),
-        .i_wr_data(r_mem_wr),
-        
-      	.i_wr_en(mem_wen && r_mem_addr < p_DATA_MEM_SIZE)
     );
 
     wire[2:0] opcode = i_inst[15:13];
@@ -165,65 +150,73 @@ module core #(
                 r_tgt_in    <= w_reg1_out + w_reg2_out;
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data    
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             ADDI: begin
                 r_tgt_in    <= w_reg1_out + w_sign_imm_ext;
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             NAND: begin
               	r_tgt_in    <= ~(w_reg1_out & w_reg2_out);
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             LUI: begin
                 r_tgt_in    <= {w_long_imm, 6'b0};
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             SW: begin
                 r_tgt_in    <= 15'b0;
                 r_tgt_wr_en <= 1'b0;
 
-                r_mem_wr    <= w_reg1_out;
-                r_mem_addr  <= w_reg2_out + w_sign_imm_ext;
-                mem_wen     <= 1'b1;
+                o_mem_wr_data
+                            <= w_reg1_out;
+                o_mem_addr  <= w_reg2_out + w_sign_imm_ext;
+                o_mem_wr_en <= 1'b1;
             end
             LW: begin
-                r_mem_addr  <= w_reg1_out + w_sign_imm_ext;
-                r_tgt_in    <= w_mem_rd;
+                o_mem_addr  <= w_reg1_out + w_sign_imm_ext;
+                r_tgt_in    <= i_mem_rd_data;
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             BEQ: begin
                 r_tgt_in    <= 15'b0;
                 r_tgt_wr_en <= 1'b0;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
             JALR: begin
                 r_tgt_in    <= o_pc + 1;
                 r_tgt_wr_en <= 1'b1;
 
-                r_mem_wr    <= 15'b0;
-                r_mem_addr  <= 15'b0;
-                mem_wen     <= 1'b0;
+                o_mem_wr_data
+                            <= 15'b0;
+                o_mem_addr  <= 15'b0;
+                o_mem_wr_en <= 1'b0;
             end
         endcase
     end
