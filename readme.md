@@ -29,20 +29,24 @@ RiSC stands for Ridiculously Simple Computer. It is an ISA used for teaching pur
 
 ---
 
-## Non-pipelined implementation
+## Singe cycle implementation
 
 - Implementation of a simple non-pipelined version
 - RTL code written in **verilog**
 - Constrained random verification using **system verilog**
   - **Reference models** of sub-components
   - Testing by comparing results of reference model and RTL design using **constrained random stimulus**
-- Documentation : [./non_pipelined/readme.md](non_pipelined/readme.md)
 
-- Register file was **formally verified** using symbiyosys
+- Formal verification using symbiyosys
+  - Proved register file and data memory using k-induction and bmc
+
+- Documentation : [./single_cycle/readme.md](single_cycle/readme.md)
+
+![Block diagram](docs/RiSC16_single_cycle_impl.drawio.svg)
 
 ---
 
-## Tools
+## Utilities
 
 - Tools for RiSC-16 written in python
 
