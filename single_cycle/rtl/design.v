@@ -26,28 +26,56 @@ SOFTWARE.
 `define DESIGN_SV
 
 `include "core.v"
+`include "mem_data.v"
 
 module toplevel (
-  input clk,                  // Global clock
-  output[15:0] pc
+    input clk,                  // Global clock
+    output[15:0] pc
 );
 
-  localparam p_INST_NUM = 1024;
-  localparam p_CODE_FILE = "code.data";
-  
-  reg[15:0] memory[p_INST_NUM];
+    localparam p_INST_NUM = 1024;
+    localparam p_DATA_ADDR_LEN = 10;
+    localparam p_DATA_NUM  = 2 ** p_DATA_ADDR_LEN;
+    localparam p_CODE_FILE = "code.data";
+    
+    reg[15:0] inst_memory[p_INST_NUM];
 
-  initial begin
-    $readmemb(p_CODE_FILE, memory);
-  end
+    initial begin
+        $readmemb(p_CODE_FILE, inst_memory);
+    end
 
-  core #(.p_DATA_MEM_SIZE(1024)) processor_core (
-      .i_clk(clk),
-      .i_rst(0),
-      .i_inst(memory[pc]),
-      .o_pc(pc)
-  );
-  
+    wire[15:0] w_rd_data;
+    wire[15:0] w_wr_data;
+    wire[15:0] w_addr;
+    wire w_wr_en;
+
+    // The DUT	
+    core core_dut (
+        .i_clk(clk),
+        .i_rst(0),
+
+        .i_inst(inst_memory[pc]),
+        .o_pc(pc),
+
+      .i_mem_rd_data((w_addr < p_DATA_NUM) ? w_rd_data : 16'b0),
+        .o_mem_wr_data(w_wr_data),
+        .o_mem_addr(w_addr),
+        .o_mem_wr_en(w_wr_en)
+    );
+    
+    mem_data #(
+        .p_WORD_LEN(16),
+        .p_ADDR_LEN(p_DATA_ADDR_LEN)
+    ) datamem (
+        .i_clk(clk),
+        .i_wr_en(w_wr_en && (w_addr < p_DATA_NUM)),
+        
+        .i_addr(w_addr),
+        .o_rd_data(w_rd_data),
+        .i_wr_data(w_wr_data)
+    );
+    
 endmodule
 
 `endif
+
