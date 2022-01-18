@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 2
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal mem_data.v
+prep -top mem_data
+
+[files]
+rtl/mem_reg.v
+rtl/core.v
+rtl/mem_data.v

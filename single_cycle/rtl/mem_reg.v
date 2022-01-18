@@ -66,6 +66,44 @@ module mem_reg #(
                 r_memory[i_tgt] = i_tgt_data;
     end
             
+`ifdef FORMAL
+
+    // Test some register by tracking its value
+    (* anyconst *) reg[p_REG_ADDR_LEN-1:0] f_test_reg;
+    reg[p_WORD_LEN-1:0] f_test_val = 0;
+    
+    always @(*) begin
+        // Test register must not be 0!
+        assume(f_test_reg !== 0);
+    
+        // Track memory
+        assert(r_memory[f_test_reg] == f_test_val);
+
+        // Outputs must never be indeterminate
+        assert(^o_src1_data !== 1'bx);
+        assert(^o_src1_data !== 1'bx);
+
+        // Reading 0 must always give 0
+        if(i_src1 == 0)
+            assert(o_src1_data == 0);
+        if(i_src2 == 0)
+            assert(o_src2_data == 0);
+
+        // Reading from test register
+        if(i_src1 == f_test_reg)
+            assert(o_src1_data == f_test_val);
+        if(i_src2 == f_test_reg)
+            assert(o_src2_data == f_test_val);
+    end
+
+    always @(posedge i_clk) begin
+        // Writing to test register
+        if(i_tgt == f_test_reg && i_wr_en)
+            f_test_val <= i_tgt_data;
+    end
+
+`endif
+
 endmodule
 
 `endif

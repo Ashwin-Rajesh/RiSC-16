@@ -87,7 +87,9 @@ The toplevel structure looks like this :
 
 ![Block diagram](../docs/RiSC16_single_cycle_impl.drawio.svg)
 
-Notes : There is also a little bit of "glue" logic that makes sure that the addresses to data memory are valid (in its boundary) when writing and reading.
+(Legend : Green - data, Red - Address, Blue - Control)
+
+Note : There is also a little bit of "glue" logic that makes sure that the addresses to data memory are valid (in its boundary) when writing and reading. Reset is also ignored.
 
 ---
 
@@ -250,6 +252,20 @@ Notes : There is also a little bit of "glue" logic that makes sure that the addr
   ```
 - ```testbench.sv```
   - Toplevel testbench which instantiates the other testbenches
+
+---
+
+## Formal verification
+
+- Formal verification was done on ```mem_reg``` and ```mem_data``` using symbiyosys (check [configuration file](formal.sby) and [Makefile](Makefile)). Check the end of the modules in the verilog files for the ``` `ifdef FORMAL ... `endif``` portion to see the properties proved.
+
+### ```mem_reg```
+  - Reads from register 0 always return 0
+  - Outputs are never indeterminate
+  - If ```i_wr_en``` is high in a clock cycle, the register addressed by ```i_tgt``` will store value ```i_tgt_data``` from next cycle. Then, when ```i_src1``` is equal to that same register, it is put on ```o_src1_data```. The same applies for ```src2```.
+
+### ```mem_data```
+  - If ```i_wr_en``` is high in a clock cycle, the value at address ```i_addr``` will become ```i_wr_data``` on the clock posedge. Then, when ```i_addr``` is equal to that address, it is put on ```o_rd_data```
 
 ---
 

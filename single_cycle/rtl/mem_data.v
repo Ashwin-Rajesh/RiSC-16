@@ -62,6 +62,27 @@ module mem_data #(
 
     // Asynchronous read
   	assign o_rd_data = r_memory[w_addr_trunc];
+
+`ifdef FORMAL
+    (* anyconst *) reg[p_ADDR_LEN-1:0] f_test_addr;
+    reg[p_WORD_LEN-1:0] f_test_data = 0;
+
+    always @(*) begin
+        // Memory location test
+        assert(r_memory[f_test_addr] == f_test_data);
+
+        // Output data test
+        if(i_addr == f_test_addr)
+            assert(o_rd_data == f_test_data);        
+    end
+
+    always @(posedge i_clk) begin
+        // Writing data
+        if(i_addr == f_test_addr && i_wr_en)
+            f_test_data = i_wr_data;
+    end
+`endif
+
 endmodule
 
 `endif
