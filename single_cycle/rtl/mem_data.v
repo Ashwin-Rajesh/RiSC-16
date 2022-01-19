@@ -39,9 +39,6 @@ module mem_data #(
   	input[p_WORD_LEN-1:0]        i_wr_data      // Data for writing (on posedge)
 );
 
-    // Truncated address bus
-  	wire[$clog2(p_MEM_SIZE)-1:0] w_addr_trunc = i_addr[$clog2(p_MEM_SIZE)-1:0];
-
     // Memory array
 	reg[p_WORD_LEN-1:0] r_memory[p_MEM_SIZE-1:0];
 
@@ -57,11 +54,11 @@ module mem_data #(
     always @(posedge i_clk) begin
         // Write to memory
         if(i_wr_en)
-            r_memory[w_addr_trunc]   <= i_wr_data;
+            r_memory[i_addr]   <= i_wr_data;
     end
 
     // Asynchronous read
-  	assign o_rd_data = r_memory[w_addr_trunc];
+  	assign o_rd_data = r_memory[i_addr];
 
 `ifdef FORMAL
     (* anyconst *) reg[p_ADDR_LEN-1:0] f_test_addr;
