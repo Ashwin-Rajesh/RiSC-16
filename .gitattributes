@@ -1,1 +1,1 @@
-test_asm/** -linguist-vendored
+test_asm/*/* -linguist-vendored
