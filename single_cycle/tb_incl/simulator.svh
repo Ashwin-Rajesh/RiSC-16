@@ -97,7 +97,7 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
         end
         BEQ : begin
             if(registers.read_reg(inst.rega) == registers.read_reg(inst.regb))
-              program_counter = program_counter + inst.imm;
+              program_counter = program_counter + 1 + inst.imm;
             else
               program_counter = program_counter + 1;
         end

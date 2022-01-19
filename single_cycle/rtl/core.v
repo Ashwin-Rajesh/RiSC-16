@@ -232,7 +232,7 @@ module core (
               end
               BEQ: begin
                   if(w_reg1_out == w_reg2_out)
-                      o_pc      <= o_pc + w_sign_imm_ext;
+                      o_pc      <= o_pc + 1 + w_sign_imm_ext;
                   else
                       o_pc      <= o_pc + 1;
               end
