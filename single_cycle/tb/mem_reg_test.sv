@@ -52,7 +52,16 @@ module mem_reg_test;
       .p_WORD_LEN(16),
       .p_REG_ADDR_LEN(3),
       .p_REG_FILE_SIZE(8)
-  ) regfile_dut (.in(inp), .*);
+  ) regfile_dut (
+    .i_clk(clk),
+    .i_wr_en(writeEn),
+    .i_src1(src1),
+    .i_src2(src2),
+    .i_tgt(tgt),
+    .o_src1_data(out1),
+    .o_src2_data(out2),
+    .i_tgt_data(inp)
+  );
 
   // The reference model
   regfile reference;

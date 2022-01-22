@@ -52,7 +52,16 @@ module mem_reg_test;
       .p_WORD_LEN(16),
       .p_REG_ADDR_LEN(3),
       .p_REG_FILE_SIZE(8)
-  ) regfile_dut (.in(inp), .*);
+  ) regfile_dut (
+    .i_clk(clk),
+    .i_wr_en(writeEn),
+    .i_src1(src1),
+    .i_src2(src2),
+    .i_tgt(tgt),
+    .o_src1_data(out1),
+    .o_src2_data(out2),
+    .i_tgt_data(inp)
+  );
 
   // The reference model
   regfile reference;
@@ -105,6 +114,13 @@ module mem_reg_test;
         cb_reg.inp          <= $random;
         cb_reg.writeEn    	<= $random;
       
+        // Make sure outputs are not indeterminate        
+        assert (^out1 !== 1'bx);
+        assert (^out2 !== 1'bx);
+        
+        // Wait for clock
+        @(cb_reg);
+      
         // Make sure reads match
         assert (reference.read_reg(src1) === out1) else begin
           $display("%t Source 1 mismatch. Reg %d : %h(dut) vs %h", $time, src1, out1, reference.read_reg(src1));
@@ -113,13 +129,6 @@ module mem_reg_test;
           $display("%t Source 2 mismatch. Reg %d : %h(dut) vs %h", $time, src2, out2, reference.read_reg(src2));            
         end;
 
-        // Make sure outputs are not indeterminate        
-        assert (^out1 !== 1'bx);
-        assert (^out2 !== 1'bx);
-        
-        // Wait for clock
-        @(cb_reg);
-      
         // Write to reference if needed
         if(writeEn) begin
           reference.write_reg(tgt, inp);
