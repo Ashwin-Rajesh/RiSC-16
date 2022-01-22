@@ -1,0 +1,16 @@
+[options]
+mode cover
+depth 10
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal core.v
+prep -top core
+
+[files]
+rtl/mem_reg.v
+rtl/core.v
+rtl/mem_data.v
+rtl/alu.v

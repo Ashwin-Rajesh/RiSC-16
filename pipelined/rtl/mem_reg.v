@@ -70,12 +70,15 @@ module mem_reg #(
         o_src1_data <= w_src1_data;
         o_src2_data <= w_src2_data;
     end
-            
+
 `ifdef FORMAL
+`ifndef CORE_V
 
     // Test some register by tracking its value
     (* anyconst *) reg[p_REG_ADDR_LEN-1:0] f_test_reg;
     reg[p_WORD_LEN-1:0] f_test_val = 0;
+
+    reg f_past_valid = 0;
     
     always @(*) begin
         // Test register must not be 0!
@@ -87,26 +90,31 @@ module mem_reg #(
         // Outputs must never be indeterminate
         assert(^o_src1_data !== 1'bx);
         assert(^o_src1_data !== 1'bx);
-
-        // Reading 0 must always give 0
-        if(i_src1 == 0)
-            assert(o_src1_data == 0);
-        if(i_src2 == 0)
-            assert(o_src2_data == 0);
-
-        // Reading from test register
-        if(i_src1 == f_test_reg)
-            assert(o_src1_data == f_test_val);
-        if(i_src2 == f_test_reg)
-            assert(o_src2_data == f_test_val);
     end
 
     always @(posedge i_clk) begin
         // Writing to test register
         if(i_tgt == f_test_reg && i_wr_en)
             f_test_val <= i_tgt_data;
+
+        if(f_past_valid) begin
+            // Reading 0 must always give 0
+            if($past(i_src1) == 0)
+                assert(o_src1_data == 0);
+            if($past(i_src2) == 0)
+                assert(o_src2_data == 0);
+
+            // Reading from test register
+            if($past(i_src1) == f_test_reg)
+                assert(o_src1_data == $past(f_test_val));
+            if($past(i_src2) == f_test_reg)
+                assert(o_src2_data == $past(f_test_val));
+        end
+
+        f_past_valid = 1;
     end
 
+`endif
 `endif
 
 endmodule

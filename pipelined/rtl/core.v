@@ -26,6 +26,7 @@ SOFTWARE.
 `define CORE_V
 
 `include "mem_reg.v"
+`include "alu.v"
 
 // Everything except the instruction memory
 module core (
@@ -34,7 +35,7 @@ module core (
     input               i_rst,                  // Global reset
 
     // Instruction memory interface
-    input[15:0]         i_inst,                 // Instruction input from instruction memory (0 cycle delay)
+    input[15:0]         i_inst,                 // Instruction input from instruction memory (read is assumed combinational)
     output[15:0]        o_pc_next,              // Program counter output to instruction memory
 
     // Data memory interface
@@ -59,38 +60,44 @@ module core (
     //
     // For communication between adjacent stages
     // ---------------------------
-    reg[15:0] r_pc_fetch;
-    reg[15:0] r_pc_decode;
-    reg[15:0] r_pc_exec;
-    reg[15:0] r_pc_mem;
-    reg[15:0] r_pc_wb;
+    reg r_valid_fetch   = 0;
+    reg r_valid_decode  = 0;
+    reg r_valid_exec    = 0;
+    reg r_valid_mem     = 0;
+    reg r_valid_wb      = 0;
 
-    reg[15:0] r_instn_fetch;
+    reg[15:0] r_pc_fetch        = 0;
+    reg[15:0] r_pc_decode       = 0;
+    reg[15:0] r_pc_exec         = 0;
+    reg[15:0] r_pc_mem          = 0;
+    reg[15:0] r_pc_wb           = 0;
+
+    reg[15:0] r_instn_fetch     = 0;
 
     wire[2:0] w_opcode_fetch    = r_instn_fetch[15:13];
-    reg[2:0] r_opcode_decode;
-    reg[2:0] r_opcode_exec;
+    reg[2:0] r_opcode_decode    = 0;
+    reg[2:0] r_opcode_exec      = 0;
 
-    reg[2:0] r_src1_decode;
-    reg[2:0] r_src2_decode;
+    reg[2:0] r_src1_decode      = 0;
+    reg[2:0] r_src2_decode      = 0;
 
-    reg[2:0] r_tgt_decode;
-    reg[2:0] r_tgt_exec;
-    reg[2:0] r_tgt_mem;
-    reg[2:0] r_tgt_wb;
+    reg[2:0] r_tgt_decode       = 0;
+    reg[2:0] r_tgt_exec         = 0;
+    reg[2:0] r_tgt_mem          = 0;
+    reg[2:0] r_tgt_wb           = 0;
 
-    reg[15:0] r_operand_imm_decode;
+    reg[15:0] r_operand_imm_decode  = 0;
     wire[15:0] w_operand1_decode;
     wire[15:0] w_operand2_decode;
 
-    reg[15:0] r_swdata_exec;
+    reg[15:0] r_swdata_exec     = 0;
 
-    reg[15:0] r_result_alu_exec;
-    reg[15:0] r_result_alu_mem;
+    reg[15:0] r_result_alu_exec = 0;
+    reg[15:0] r_result_alu_mem  = 0;
     wire[15:0] w_result_mem;        // Result after mem can be from ALU or MEM
-    reg[15:0] r_result_wb;
+    reg[15:0] r_result_wb       = 0;
 
-    reg r_result_eq_exec;
+    reg r_result_eq_exec        = 0;
 
     // ---------------------------
     // Stall signals and stall logic
@@ -101,16 +108,22 @@ module core (
     // Stall origins
     reg r_stall_fetch;
     reg r_stall_decode;
-    reg r_stall_exec    = 0;
+    reg r_stall_exec;
     reg r_stall_mem     = 0;
     reg r_stall_wb      = 0;
 
     // If earlier stages are stalled, then stall this stage too!
-    wire w_stall_fetch  = r_stall_fetch || w_stall_decode;
-    wire w_stall_decode = r_stall_decode || w_stall_mem;
-    wire w_stall_exec   = r_stall_exec || w_stall_mem;
-    wire w_stall_mem    = r_stall_mem || w_stall_wb;
-    wire w_stall_wb     = r_stall_wb;
+    wire w_stall_fetch;
+    wire w_stall_decode;
+    wire w_stall_exec;
+    wire w_stall_mem;
+    wire w_stall_wb;
+
+    assign w_stall_fetch  = r_stall_fetch || w_stall_decode;
+    assign w_stall_decode = r_stall_decode || w_stall_mem;
+    assign w_stall_exec   = r_stall_exec || w_stall_mem;
+    assign w_stall_mem    = r_stall_mem || w_stall_wb;
+    assign w_stall_wb     = r_stall_wb;
 
     // Fetch stall logic
     always @(*) begin
@@ -134,7 +147,7 @@ module core (
         // LW with data hazard with next instruction
         if(r_opcode_exec == LW 
                 && r_tgt_exec !== 0 
-                && (r_tgt_exec == r_src2_decode || r_tgt_exec == r_src2_decode))
+                && (r_tgt_exec == r_src1_decode || r_tgt_exec == r_src2_decode))
             r_stall_exec = 1'b1;
         else
             r_stall_exec = 1'b0;
@@ -155,7 +168,7 @@ module core (
     assign o_pc_next = r_pc;
 
     // Combinational logic to decide PC to fetch next
-    always @(*) begin
+    always @(posedge i_clk) begin
         // If stalled, retain old program counter. Dont fetch new
         if(w_stall_fetch) begin
             r_pc    <= r_pc;
@@ -178,10 +191,16 @@ module core (
     // Instruction (including stall)
     always @(posedge i_clk) begin
         // If stall originates from fetch, add a NOP
-        if(r_stall_fetch)
+        if(r_stall_fetch) begin
             r_instn_fetch   <= 0;
-        else
+            r_valid_fetch   <= 0;
+        end else if(w_stall_fetch) begin
+            r_instn_fetch   <= r_instn_fetch;
+            r_valid_fetch   <= r_valid_fetch;
+        end else begin
             r_instn_fetch   <= i_inst;
+            r_valid_fetch   <= 1;
+        end
     end
 
     // ---------------------------
@@ -206,11 +225,11 @@ module core (
 
     // Modify signed and long immediate to get actual immediate that will be used
     wire[15:0] w_simm_ext_decode = {{25{w_simm_decode[6]}}, w_simm_decode};
-    wire[15:0] w_limm_ext_decode = {w_limm_decode, {9{1'b0}}}
+    wire[15:0] w_limm_ext_decode = {w_limm_decode, {9{1'b0}}};
 
     // Decide the source and destination addresses
     always @(*) begin
-        case(opcode)
+        case(w_opcode_fetch)
             ADD: begin
                 r_tgt_next      = w_rega_decode;
                 r_src1_next     = w_regb_decode;
@@ -262,8 +281,8 @@ module core (
         endcase
     end
 
-    mem_reg regfile (
-        .i_clk(i_clk),                                // Clock signal
+    mem_reg regfile_inst (
+        .i_clk(i_clk),                      // Clock signal
 
         .i_src1(r_src1_next),               // Read address 1
         .i_src2(r_src2_next),               // Read address 2
@@ -273,12 +292,13 @@ module core (
         .o_src2_data(w_operand2_decode),    // Read output 2 (asynchronous)
         .i_tgt_data(w_result_mem),          // Input to write to the target (on posedge)
 
-        .i_wr_en(1'b1)                        // High to write on posedge
+        .i_wr_en(r_valid_mem)               // High to write on posedge
     );
 
     always @(posedge i_clk) begin
         // Insert bubbe
         if(r_stall_decode) begin
+            r_valid_decode  <= 0;
             r_pc_decode     <= r_pc_decode;
             r_tgt_decode    <= 3'b0;
             r_src1_decode   <= 3'b0;
@@ -288,6 +308,7 @@ module core (
         end
         // Stall pipeline (pause)
         else if(w_stall_decode) begin
+            r_valid_decode  <= r_valid_decode;
             r_pc_decode     <= r_pc_decode;
             r_tgt_decode    <= r_tgt_decode;
             r_src1_decode   <= r_src1_decode;
@@ -296,10 +317,11 @@ module core (
             r_operand_imm_decode <= r_operand_imm_decode;
         // Send to next stage
         end else begin
+            r_valid_decode  <= r_valid_fetch;
             r_pc_decode     <= r_pc_fetch;
             r_tgt_decode    <= r_tgt_next;
             r_src1_decode   <= r_src1_next;
-            r_src2_decode   <= r_src2_nextl
+            r_src2_decode   <= r_src2_next;
             r_opcode_decode <= w_opcode_decode;
             r_operand_imm_decode <= r_imm_next;
         end
@@ -353,7 +375,7 @@ module core (
 
     // Decide the operation and sources for the ALU
     always @(*) begin
-        case(opcode)
+        case(r_opcode_decode)
             ADD: begin
                 r_aluop    = 1'b0;
                 r_aluina   = r_operand1_fwd;
@@ -397,7 +419,7 @@ module core (
         endcase
     end
 
-    module alu (
+    alu alu_inst (
         .i_op(r_aluop),       // 0 for add, 1 for nand
 
         .i_ina(r_aluina),      // Input a
@@ -410,6 +432,7 @@ module core (
     always @(posedge i_clk) begin
         // Insert bubble
         if(r_stall_exec) begin
+            r_valid_exec        <= 0;
             r_pc_exec           <= r_pc_exec;
             r_tgt_exec          <= 3'b0;
             r_opcode_exec       <= 3'b0;
@@ -418,6 +441,7 @@ module core (
             r_result_alu_exec   <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_exec) begin
+            r_valid_exec        <= r_valid_exec;
             r_pc_exec           <= r_pc_exec;
             r_tgt_exec          <= r_tgt_exec;
             r_opcode_exec       <= r_opcode_exec;
@@ -426,6 +450,7 @@ module core (
             r_result_alu_exec   <= r_result_alu_exec;
         // Pass instruction through
         end else begin
+            r_valid_exec        <= r_valid_decode;
             r_pc_exec           <= r_pc_decode;
             r_tgt_exec          <= r_tgt_decode;
             r_opcode_exec       <= r_opcode_decode;
@@ -448,16 +473,19 @@ module core (
     always @(posedge i_clk) begin
         // Insert bubble
         if(r_stall_mem) begin
+            r_valid_mem         <= 0;
             r_pc_mem            <= r_pc_mem;
             r_tgt_mem           <= 0;
             r_result_alu_mem    <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_mem) begin
+            r_valid_mem         <= r_valid_mem;
             r_pc_mem            <= r_pc_mem;
             r_tgt_mem           <= r_tgt_mem;
-            r_result_alu_mem    <= 0;        // Pass instruction through
+            r_result_alu_mem    <= r_result_alu_mem;        
         // Move pipeline forward
         end else begin
+            r_valid_mem         <= r_valid_exec;
             r_pc_mem            <= r_pc_exec;
             r_tgt_mem           <= r_tgt_exec;
             r_result_alu_mem    <= r_result_alu_exec;
@@ -479,21 +507,115 @@ module core (
     always @(posedge i_clk) begin
         // Insert bubble
         if(r_stall_wb) begin
+            r_valid_wb          <= 0;
             r_pc_wb             <= r_pc_wb;
             r_tgt_wb            <= 0;
             r_result_wb         <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_wb) begin
+            r_valid_wb          <= r_valid_wb;
             r_pc_wb             <= r_pc_wb;
             r_tgt_wb            <= r_tgt_wb;
             r_result_wb         <= r_result_wb;
         // Move pipeline forward
         end else begin
+            r_valid_wb          <= r_valid_mem;
             r_pc_wb             <= r_pc_mem;
             r_tgt_wb            <= r_tgt_mem;
             r_result_wb         <= w_result_mem;
         end
     end
+
+`ifdef FORMAL
+    // Testing the pipelining and stalling
+    reg[2:0] f_pipe_opcodes[4:0];
+    reg[4:0] f_pipe_bubble;
+    reg[2:0] f_pipe_tgt[4:0];
+    
+
+    reg f_past_valid = 0;
+
+    integer f_i;
+
+    always @(*) begin
+        f_pipe_opcodes[0] = w_opcode_fetch;
+        f_pipe_opcodes[1] = r_opcode_decode;
+        f_pipe_opcodes[2] = r_opcode_exec;
+
+        f_pipe_bubble[0] = ~r_valid_fetch;
+        f_pipe_bubble[1] = ~r_valid_decode;
+        f_pipe_bubble[2] = ~r_valid_exec;
+        f_pipe_bubble[3] = ~r_valid_mem;
+        f_pipe_bubble[4] = ~r_valid_wb;
+
+        case(w_opcode_fetch)
+            ADD: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+            ADDI: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+            NAND: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+            LUI: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+            SW: begin
+                f_pipe_tgt[0]      = 3'b0;
+            end
+            LW: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+            BEQ: begin
+                f_pipe_tgt[0]      = 3'b0;
+            end
+            JALR: begin
+                f_pipe_tgt[0]      = r_instn_fetch[12:10];
+            end
+        endcase
+
+        f_pipe_tgt[1] = r_tgt_decode;
+        f_pipe_tgt[2] = r_tgt_exec;
+        f_pipe_tgt[3] = r_tgt_mem;
+        f_pipe_tgt[4] = r_tgt_wb;
+    end
+
+    always @(posedge i_clk) begin
+        if(f_past_valid) begin
+            // Bubbles must move up the pipeline every cycle
+            for(f_i = 0; f_i < 4; f_i = f_i + 1)
+                if($past(f_pipe_bubble[f_i]))
+                    assert(f_pipe_bubble[f_i + 1]);
+
+            // Insert a bubble for load word
+            if(f_pipe_opcodes[3] == LW) begin
+                if(f_pipe_tgt[3] != 0 && (r_tgt_mem == $past(r_src1_decode) || r_tgt_mem == $past(r_src2_decode)))
+                    assert(f_pipe_bubble[2]);
+            end
+        end
+        
+        f_pipe_opcodes[4] = f_pipe_opcodes[3];
+        f_pipe_opcodes[3] = f_pipe_opcodes[2];
+    
+    
+        f_past_valid = 1;
+    end
+
+    always @(*) begin
+        // Check for bubbles in the pipeline
+        for(f_i = 0; f_i < 5; f_i = f_i + 1) begin
+            if(f_pipe_opcodes[f_i] == BEQ) begin
+                if(f_i != 0)
+                    assert(f_pipe_bubble[f_i - 1]);
+                if(f_i > 1)
+                    assert(f_pipe_bubble[f_i - 2]);
+            end else if(f_pipe_opcodes[f_i] == JALR)
+                if(f_i != 0)
+                    assert(f_pipe_bubble[f_i - 1]);
+        end
+    end
+`endif
 
 endmodule
 

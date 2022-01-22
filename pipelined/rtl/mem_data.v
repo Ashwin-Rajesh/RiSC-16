@@ -65,20 +65,24 @@ module mem_data #(
 `ifdef FORMAL
     (* anyconst *) reg[p_ADDR_LEN-1:0] f_test_addr;
     reg[p_WORD_LEN-1:0] f_test_data = 0;
+    reg f_past_valid = 0;
 
     always @(*) begin
         // Memory location test
         assert(r_memory[f_test_addr] == f_test_data);
 
-        // Output data test
-        if(i_addr == f_test_addr)
-            assert(o_rd_data == f_test_data);        
     end
 
     always @(posedge i_clk) begin
+        // Output data test
+        if(f_past_valid && $past(i_addr) == f_test_addr)
+            assert(o_rd_data == $past(f_test_data));        
+
         // Writing data
         if(i_addr == f_test_addr && i_wr_en)
             f_test_data = i_wr_data;
+
+        f_past_valid = 1;
     end
 `endif
 
