@@ -36,8 +36,8 @@ module mem_reg #(
     input[p_REG_ADDR_LEN-1:0]     i_src2,      // Read address 2
   	input[p_REG_ADDR_LEN-1:0]     i_tgt,       // Write register address
 
-    output reg[p_WORD_LEN-1:0]    o_src1_data, // Read output 1 (asynchronous)
-    output reg[p_WORD_LEN-1:0]    o_src2_data, // Read output 2 (asynchronous)
+    output reg[p_WORD_LEN-1:0]    o_src1_data = 0, // Read output 1 (asynchronous)
+    output reg[p_WORD_LEN-1:0]    o_src2_data = 0, // Read output 2 (asynchronous)
     input[p_WORD_LEN-1:0]         i_tgt_data,  // Input to write to the target (on posedge)
 
     input i_wr_en                              // High to write on posedge

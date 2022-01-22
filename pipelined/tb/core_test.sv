@@ -131,7 +131,11 @@ module core_test;
 			sim.exec_inst();
 
           	// Execute the instruction in the DUT
-			@(negedge clk);        
+			while(~core_dut.r_valid_wb) begin
+				@(negedge clk);
+			end
+			
+			@(negedge clk);
 
           	// Verify that both simulator and DUT have identical states			
 			if(~verify_status()) break;
@@ -149,7 +153,7 @@ module core_test;
 		bit failed = 0;
 		
 		// Compare program counter
-		assert(pc === sim.program_counter) else begin
+		assert(core_dut.r_pc_wb === sim.program_counter) else begin
 			fail_count++;
 			failed = 1;
 		end;
