@@ -29,6 +29,25 @@ RiSC stands for Ridiculously Simple Computer. It is an ISA used for teaching pur
 
 ---
 
+## Conventions
+
+The following naming convention is followed in the verilog code :
+
+| Prefix | Meaning
+| -----|-------
+| ```i_```| Input port
+| ```o_```| Output port
+| ```p_```| Parameter (or localparam)
+| ```r_```| Register
+| ```w_```| Wire
+| ```s_```| State definitions (as localparam)
+
+The following legend is followed for all diagrams in the documents. (all diagrams were made using drawio)
+
+![](docs/legend.drawio.svg)
+
+---
+
 ## Singe cycle implementation
 
 - Implementation of a simple non-pipelined version
@@ -42,7 +61,13 @@ RiSC stands for Ridiculously Simple Computer. It is an ISA used for teaching pur
 
 - Documentation : [./single_cycle/readme.md](single_cycle/readme.md)
 
-![Block diagram](docs/RiSC16_single_cycle_impl.drawio.svg)
+![Block diagram](single_cycle/docs/block_diagram.drawio.svg)
+
+---
+
+## Pipelined implementation
+
+![](pipelined/docs/block_diagram.drawio.svg) 
 
 ---
 

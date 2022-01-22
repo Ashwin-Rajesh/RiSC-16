@@ -85,7 +85,7 @@ module toplevel (
 
 The toplevel structure looks like this :
 
-![Block diagram](../docs/RiSC16_single_cycle_impl.drawio.svg)
+![Block diagram](docs/block_diagram.drawio.svg)
 
 (Legend : Green - data, Red - Address, Blue - Control)
 

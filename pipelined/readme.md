@@ -88,7 +88,7 @@ We add bubbles as follows (conditions are checked in the pipeline registers, not
 - Execute stage
   - opcode is LW with tgt same as any src
 
-![](../docs/RiSC16_pipelined_impl.drawio.svg)
+![](docs/block_diagram.drawio.svg)
 
 Now let us work our way backwards from the end of the pipeline to the beginning.
 
