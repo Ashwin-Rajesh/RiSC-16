@@ -51,6 +51,8 @@ module core_test;
 	bit[15:0] inst_reg;	
 	wire[15:0] pc;
 
+  	event update_evt;
+  
 	// Generate clock signal
 	always #5 clk = ~clk;
 
@@ -106,7 +108,9 @@ module core_test;
 		sim = new();
 		inst = new();
 
-		#1;
+      	rst = 1;
+      	@(negedge clk);
+		rst = 0;      	
 
 		// Main loop			
 		for(int i = 0; i < p_INST_COUNT; i = i + 1) begin
@@ -131,21 +135,24 @@ module core_test;
 			if(i % (p_INST_COUNT / 10) == 0)
 				$display("%d instructions completed", i);
 												
-			// Add more instructions till we get a valid output
+			// Flush invalid bubbles from the pipeline
 			while(~core_dut.r_valid_wb) begin
 				@(negedge clk);
 			end
+          	
+          	@(update_evt);
 			
-			@(negedge clk);
-
-          	// Execute instruction in simulator
-          	$display("Instruction window");
-          	foreach(inst_window[i])
-            	$display(inst_window[i].to_string());
-          	$display();
-         	
+          	// Show the instruction queue
+          	if(p_LOG_TRACE) begin
+          		$display("Instruction window");
+                foreach(inst_window[i])
+                    $display(inst_window[i].to_string());
+                $display();
+        	end
+          
+          	// Remove from the tail of the queue
           	sim.set_inst(inst_window.pop_front());
-			sim.exec_inst();          	
+			sim.exec_inst();
           	
           	// Verify that both simulator and DUT have identical states			
 			if(~verify_status()) break;
@@ -161,13 +168,14 @@ module core_test;
   	always @(negedge clk) begin
     	// Display the states of DUT and simulator
 		if(p_LOG_TRACE) begin
+          	$display("----------------------------------------------------");
           	$display("time: %t", $time);
             $display("dut : %s", dut_to_string());
             $display("%s", dut_to_string_detailed());
 		end
 
 		// Send the next instruction if last PC requested was different
-		if(pc !== $past(pc)) begin
+      	if(~core_dut.w_stall_fetch) begin
 			generate_inst();
 			inst_reg = inst.to_bin();
 
@@ -179,6 +187,8 @@ module core_test;
 				$display("Fetch stalled!");
       	if(p_LOG_TRACE)
         	$display();
+      
+      	->update_evt;
 
     end
   
@@ -194,7 +204,7 @@ module core_test;
 		bit failed = 0;
 		
 		// Compare program counter
-		assert(core_dut.r_pc_wb === sim.program_counter) else begin
+      	assert(core_dut.r_pc_wb === sim.program_counter_prev) else begin
 			fail_count++;
 			failed = 1;
 		end;
@@ -207,8 +217,9 @@ module core_test;
 			end;
       
 		// Output states for debugging		
-		if(failed) begin
-			$display("Verification failed!");
+      	if(failed || p_LOG_TRACE) begin
+          	if(failed)
+				$display("Verification failed!");
 			$display("dut : %s", dut_to_string());
 			$display("sim : %s", sim.to_string());
 		
@@ -216,6 +227,7 @@ module core_test;
 				$display(sim.data_mem.write_hist);
 				$display(sim.data_mem.write_data_hist);
 			end
+          	$display();
 		end
 		
 		return ~failed;
@@ -236,13 +248,34 @@ module core_test;
     function string dut_to_string_detailed();
        automatic string temp = "";
       
-      temp = $sformatf("%sStall origins     : %4b %4b %4b %4b %4b \n", "", core_dut.r_stall_fetch, core_dut.r_stall_decode, core_dut.r_stall_exec, core_dut.r_stall_mem, core_dut.r_stall_wb);
-      temp = $sformatf("%sStalled           : %4b %4b %4b %4b %4b \n", temp, core_dut.w_stall_fetch, core_dut.w_stall_decode, core_dut.w_stall_exec, core_dut.w_stall_mem, core_dut.w_stall_wb);
+      temp = $sformatf("%sStall origins     : %4d %4d %4d %4d %4d \n", "", core_dut.r_stall_fetch, core_dut.r_stall_decode, core_dut.r_stall_exec, core_dut.r_stall_mem, core_dut.r_stall_wb);
+      temp = $sformatf("%sStalled           : %4d %4d %4d %4d %4d \n", temp, core_dut.w_stall_fetch, core_dut.w_stall_decode, core_dut.w_stall_exec, core_dut.w_stall_mem, core_dut.w_stall_wb);
+	  temp = $sformatf("%sValid             : %4d %4d %4d %4d %4d \n", temp, core_dut.r_valid_fetch, core_dut.r_valid_decode, core_dut.r_valid_exec, core_dut.r_valid_mem, core_dut.r_valid_wb);
       temp = $sformatf("%sProgram counters  : %4h %4h %4h %4h %4h \n", temp, core_dut.r_pc_fetch, core_dut.r_pc_decode, core_dut.r_pc_exec, core_dut.r_pc_mem, core_dut.r_pc_wb);
-      temp = $sformatf("%sOpcodes           : %3b %3b %3b\n", temp, core_dut.w_opcode_fetch, core_dut.r_opcode_decode, core_dut.r_opcode_exec); 
+      temp = $sformatf("%sOpcodes           : ", temp);
+      temp = $sformatf("%s%4s %4s %4s %4s %4s\n", temp, 
+        	opcode_to_string(core_dut.w_opcode_fetch), 
+        	opcode_to_string(core_dut.r_opcode_decode), 
+        	opcode_to_string(core_dut.r_opcode_exec), 
+        	opcode_to_string(core_dut.r_opcode_mem), 
+        	opcode_to_string(core_dut.r_opcode_wb)); 
       
       return temp;
     endfunction
+
+	function string opcode_to_string(bit[2:0] inp);
+		case (inp)
+			0 : return "ADD";
+			1 : return "ADDI";
+			2 : return "NAND";
+			3 : return "LUI";
+			4 : return "SW";
+			5 : return "LW";
+			6 : return "BEQ";
+			7 : return "JALR";
+			default: return "??"; 
+		endcase
+	endfunction
 
 endmodule
 

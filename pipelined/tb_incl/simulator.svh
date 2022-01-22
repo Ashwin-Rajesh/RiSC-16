@@ -39,6 +39,7 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
   regfile registers;
 
   int program_counter;                      // Program counter
+  int program_counter_prev;					// Previous program counter
   int temp;
 
   instruction inst;                         // Previous instruction
@@ -56,7 +57,7 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
 
   // Show state of the simulator (program_count : next_inst : register values)
   function string to_string();
-    string temp = $sformatf("%3d : %-16s : ", program_counter, inst.to_string());
+    string temp = $sformatf("%3d : %-16s : ", program_counter_prev, inst.to_string());
     for(int i = 0; i < 8; i = i + 1)
       temp = $sformatf("%s r%1d-%h", temp, i, registers.read_reg(i));
     return temp;
@@ -69,6 +70,7 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
 
   // Execute the instruction  
   function void exec_inst();
+    program_counter_prev = program_counter;
     // Define behaviour of each instruction here
     case (inst.opcode)
         ADD : begin

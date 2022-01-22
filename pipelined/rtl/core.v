@@ -69,14 +69,16 @@ module core (
     reg[15:0] r_pc_fetch        = 0;
     reg[15:0] r_pc_decode       = 0;
     reg[15:0] r_pc_exec         = 0;
-    reg[15:0] r_pc_mem          = 0;
-    reg[15:0] r_pc_wb           = 0;
+    reg[15:0] r_pc_mem          = 0;    // for debugging only
+    reg[15:0] r_pc_wb           = 0;    // for debugging only
 
     reg[15:0] r_instn_fetch     = 0;
 
     wire[2:0] w_opcode_fetch    = r_instn_fetch[15:13];
     reg[2:0] r_opcode_decode    = 0;
     reg[2:0] r_opcode_exec      = 0;
+    reg[2:0] r_opcode_mem       = 0;    // for debugging only
+    reg[2:0] r_opcode_wb        = 0;    // for debugging only
 
     reg[2:0] r_src1_decode      = 0;
     reg[2:0] r_src2_decode      = 0;
@@ -87,6 +89,7 @@ module core (
     reg[2:0] r_tgt_wb           = 0;
 
     reg[15:0] r_operand_imm_decode  = 0;
+    reg[15:0] r_operand_imm_exec    = 0;
     wire[15:0] w_operand1_decode;
     wire[15:0] w_operand2_decode;
 
@@ -172,9 +175,9 @@ module core (
         // BEQ after execute stage
         if(r_opcode_exec == BEQ)
             if(r_result_eq_exec)
-                r_pc_next    <= r_pc_decode + 1 + r_operand_imm_decode;
+                r_pc_next    <= r_pc_exec + 1 + r_operand_imm_exec;
             else
-                r_pc_next    <= r_pc_decode + 1;
+                r_pc_next    <= r_pc_exec + 1;
         // JALR after decode stage
         else if(r_opcode_decode == JALR)
             r_pc_next    <= r_src2_decode;
@@ -184,7 +187,12 @@ module core (
     end
 
     // Instruction (including stall)
-    always @(posedge i_clk) begin
+  	always @(posedge i_clk) if(i_rst) begin
+        r_pc            <= 0;
+        r_pc_fetch      <= 0;
+        r_instn_fetch   <= 0;
+        r_valid_fetch   <= 0;
+    end else begin
         // If stall originates from fetch, add a NOP
         if(r_stall_fetch) begin
             r_pc            <= r_pc;
@@ -271,7 +279,7 @@ module core (
                 r_tgt_next      = 3'b0;
                 r_src1_next     = w_regb_decode;
                 r_src2_next     = w_rega_decode;
-                r_imm_next      = 0;
+                r_imm_next      = w_simm_ext_decode;
             end
             JALR: begin
                 r_tgt_next      = w_rega_decode;
@@ -440,6 +448,7 @@ module core (
             r_swdata_exec       <= 0;
             r_result_eq_exec    <= 0;
             r_result_alu_exec   <= 0;
+            r_operand_imm_exec  <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_exec) begin
             r_valid_exec        <= r_valid_exec;
@@ -449,6 +458,7 @@ module core (
             r_swdata_exec       <= r_swdata_exec;
             r_result_eq_exec    <= r_result_eq_exec;
             r_result_alu_exec   <= r_result_alu_exec;
+            r_operand_imm_exec  <= r_operand_imm_exec;
         // Pass instruction through
         end else begin
             r_valid_exec        <= r_valid_decode;
@@ -458,6 +468,7 @@ module core (
             r_swdata_exec       <= w_operand2_decode;
             r_result_eq_exec    <= w_alueq;
             r_result_alu_exec   <= w_aluout;
+            r_operand_imm_exec  <= r_operand_imm_decode;
         end    
     end
 
@@ -476,18 +487,21 @@ module core (
         if(r_stall_mem) begin
             r_valid_mem         <= 0;
             r_pc_mem            <= r_pc_mem;
+            r_opcode_mem        <= r_opcode_mem;
             r_tgt_mem           <= 0;
             r_result_alu_mem    <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_mem) begin
             r_valid_mem         <= r_valid_mem;
             r_pc_mem            <= r_pc_mem;
+            r_opcode_mem        <= r_opcode_mem;
             r_tgt_mem           <= r_tgt_mem;
             r_result_alu_mem    <= r_result_alu_mem;        
         // Move pipeline forward
         end else begin
             r_valid_mem         <= r_valid_exec;
             r_pc_mem            <= r_pc_exec;
+            r_opcode_mem        <= r_opcode_exec;
             r_tgt_mem           <= r_tgt_exec;
             r_result_alu_mem    <= r_result_alu_exec;
         end
@@ -510,18 +524,21 @@ module core (
         if(r_stall_wb) begin
             r_valid_wb          <= 0;
             r_pc_wb             <= r_pc_wb;
+            r_opcode_wb         <= r_opcode_wb;
             r_tgt_wb            <= 0;
             r_result_wb         <= 0;
         // Stall (hold on to prev value)
         end else if(w_stall_wb) begin
             r_valid_wb          <= r_valid_wb;
             r_pc_wb             <= r_pc_wb;
+            r_opcode_wb         <= r_opcode_wb;
             r_tgt_wb            <= r_tgt_wb;
             r_result_wb         <= r_result_wb;
         // Move pipeline forward
         end else begin
             r_valid_wb          <= r_valid_mem;
             r_pc_wb             <= r_pc_mem;
+            r_opcode_wb         <= r_opcode_mem;
             r_tgt_wb            <= r_tgt_mem;
             r_result_wb         <= w_result_mem;
         end
