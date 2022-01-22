@@ -93,7 +93,7 @@ module mem_data_test;
         
           // Random addresses and data
           cb_mem.address		<= 0;
-          cb_mem.dataIn		  	<= $random;
+          cb_mem.dataIn		  <= $random;
           cb_mem.writeEn		<= $random;
 
           @(negedge clk);
