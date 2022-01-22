@@ -37,10 +37,13 @@ module core_test;
 	localparam p_INST_COUNT = 100000;
 	localparam p_DATA_ADDR_LEN = 10;
 	localparam p_DATA_COUNT = 2 ** p_DATA_ADDR_LEN;
-	localparam p_LOG_TRACE = 0;
+	localparam p_LOG_TRACE = 1;
 	
-	// Instruction to execute
+	// Instruction to execute and instruction window
 	instruction inst;
+  	instruction inst2;
+  	instruction inst_window[$];
+	int pc_pointer = 0;
 
 	// Signals to connect to the DUT
 	bit clk;
@@ -62,7 +65,7 @@ module core_test;
 		.i_rst(rst),
 
 		.i_inst(inst_reg),
-		.o_pc(pc),
+		.o_pc_next(pc),
 
     	.i_mem_rd_data((w_addr < p_DATA_COUNT) ? w_rd_data : 0),
 		.o_mem_wr_data(w_wr_data),
@@ -101,42 +104,49 @@ module core_test;
 
 		// Initialize simulator		
 		sim = new();
-        inst = new();	
-      
+		inst = new();
+
 		#1;
 
 		// Main loop			
 		for(int i = 0; i < p_INST_COUNT; i = i + 1) begin
-			// Randomize the instruction
-			inst.randomize();
-          	inst.cg.sample();
+      		// // Randomize the instruction
+			// inst.randomize();
+          	// inst.cg.sample();
 
-			// Set instruction to execute in the simulator
-			sim.set_inst(inst);
-			// Set instruction to execute in the DUT
-			inst_reg = inst.to_bin();
+			// // Set instruction to execute in the simulator
+			// sim.set_inst(inst);
+			// // Set instruction to execute in the DUT
+			// inst_reg = inst.to_bin();
 
-			// Display the states of DUT and simulator
-			if(p_LOG_TRACE) begin
-				$display("sim : %s", sim.to_string());
-				$display("dut : %s", dut_to_string());
-				$display();
-			end
+			// // Display the states of DUT and simulator
+			// if(p_LOG_TRACE) begin
+			// 	$display("sim : %s", sim.to_string());
+			// 	$display("dut : %s", dut_to_string());
+            //   	$display("%s", dut_to_string_detailed());
+			// 	$display();
+			// end
           
           	// Counter for number of instructions completed			
 			if(i % (p_INST_COUNT / 10) == 0)
 				$display("%d instructions completed", i);
 												
-			// Execute instruction in simulator
-			sim.exec_inst();
-
-          	// Execute the instruction in the DUT
+			// Add more instructions till we get a valid output
 			while(~core_dut.r_valid_wb) begin
 				@(negedge clk);
 			end
 			
 			@(negedge clk);
 
+          	// Execute instruction in simulator
+          	$display("Instruction window");
+          	foreach(inst_window[i])
+            	$display(inst_window[i].to_string());
+          	$display();
+         	
+          	sim.set_inst(inst_window.pop_front());
+			sim.exec_inst();          	
+          	
           	// Verify that both simulator and DUT have identical states			
 			if(~verify_status()) break;
 		end
@@ -147,8 +157,39 @@ module core_test;
         $display("Finished core processor test");
 		$finish;
 	end
+	
+  	always @(negedge clk) begin
+    	// Display the states of DUT and simulator
+		if(p_LOG_TRACE) begin
+          	$display("time: %t", $time);
+            $display("dut : %s", dut_to_string());
+            $display("%s", dut_to_string_detailed());
+		end
 
-	// Verify that DUT and simulator have identical states
+		// Send the next instruction if last PC requested was different
+		if(pc !== $past(pc)) begin
+			generate_inst();
+			inst_reg = inst.to_bin();
+
+			if(p_LOG_TRACE)
+				$display("Sending new instruction : %s", inst.to_string());
+		end
+		else
+			if(p_LOG_TRACE)
+				$display("Fetch stalled!");
+      	if(p_LOG_TRACE)
+        	$display();
+
+    end
+  
+	function generate_inst();
+		inst.randomize();
+		inst.cg.sample();
+		inst2 = new inst;
+      	inst_window.push_back(inst2);
+	endfunction
+
+	// Verify that DUT and simulator have identical states in commit
 	function bit verify_status();
 		bit failed = 0;
 		
@@ -160,7 +201,7 @@ module core_test;
 
 		// Compare register values	
 		for(int i = 1; i < 8; i = i + 1)
-          assert(sim.registers.read_reg(i) === core_dut.regfile.r_memory[i]) else begin
+          assert(sim.registers.read_reg(i) === core_dut.regfile_inst.r_memory[i]) else begin
 				fail_count++;
 				failed = 1;
 			end;
@@ -184,13 +225,24 @@ module core_test;
 	function string dut_to_string();
 		automatic string temp = "";
 			
-			temp = $sformatf("%3d : %-17s: ", pc, inst.to_string());
+			temp = $sformatf("%3d : %-17s: ", core_dut.r_pc_wb, inst.to_string());
 			
 			for(int i = 0; i < 8; i = i + 1)
-              temp = $sformatf("%s r%1d-%h", temp, i, core_dut.regfile.r_memory[i]);
+              temp = $sformatf("%s r%1d-%h", temp, i, core_dut.regfile_inst.r_memory[i]);
 		
 		return temp;
 	endfunction
+  
+    function string dut_to_string_detailed();
+       automatic string temp = "";
+      
+      temp = $sformatf("%sStall origins     : %4b %4b %4b %4b %4b \n", "", core_dut.r_stall_fetch, core_dut.r_stall_decode, core_dut.r_stall_exec, core_dut.r_stall_mem, core_dut.r_stall_wb);
+      temp = $sformatf("%sStalled           : %4b %4b %4b %4b %4b \n", temp, core_dut.w_stall_fetch, core_dut.w_stall_decode, core_dut.w_stall_exec, core_dut.w_stall_mem, core_dut.w_stall_wb);
+      temp = $sformatf("%sProgram counters  : %4h %4h %4h %4h %4h \n", temp, core_dut.r_pc_fetch, core_dut.r_pc_decode, core_dut.r_pc_exec, core_dut.r_pc_mem, core_dut.r_pc_wb);
+      temp = $sformatf("%sOpcodes           : %3b %3b %3b\n", temp, core_dut.w_opcode_fetch, core_dut.r_opcode_decode, core_dut.r_opcode_exec); 
+      
+      return temp;
+    endfunction
 
 endmodule
 

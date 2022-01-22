@@ -160,6 +160,7 @@ module core (
     // The next instruction to fetch is stored here.
     // i_inst contains instruction newly fetched in this cycle
     reg[15:0] r_pc;
+    reg[15:0] r_pc_next;
 
     initial begin
         r_pc        = 0;
@@ -167,37 +168,37 @@ module core (
 
     assign o_pc_next = r_pc;
 
-    // Combinational logic to decide PC to fetch next
-    always @(posedge i_clk) begin
-        // If stalled, retain old program counter. Dont fetch new
-        if(w_stall_fetch) begin
-            r_pc    <= r_pc;
-        end else begin
-            // BEQ after execute stage
-            if(r_opcode_exec == BEQ)
-                if(r_result_eq_exec)
-                    r_pc    <= r_pc_decode + 1 + r_operand_imm_decode;
-                else
-                    r_pc    <= r_pc_decode + 1;
-            // JALR after decode stage
-            else if(r_opcode_decode == JALR)
-                r_pc    <= r_src2_decode;
-            // Any other instruction
+    always @(*) begin
+        // BEQ after execute stage
+        if(r_opcode_exec == BEQ)
+            if(r_result_eq_exec)
+                r_pc_next    <= r_pc_decode + 1 + r_operand_imm_decode;
             else
-                r_pc    <= r_pc + 1;
-        end
+                r_pc_next    <= r_pc_decode + 1;
+        // JALR after decode stage
+        else if(r_opcode_decode == JALR)
+            r_pc_next    <= r_src2_decode;
+        // Any other instruction
+        else
+            r_pc_next    <= r_pc + 1;
     end
 
     // Instruction (including stall)
     always @(posedge i_clk) begin
         // If stall originates from fetch, add a NOP
         if(r_stall_fetch) begin
+            r_pc            <= r_pc;
+            r_pc_fetch      <= r_pc_fetch;
             r_instn_fetch   <= 0;
             r_valid_fetch   <= 0;
         end else if(w_stall_fetch) begin
+            r_pc            <= r_pc;
+            r_pc_fetch      <= r_pc_fetch;
             r_instn_fetch   <= r_instn_fetch;
             r_valid_fetch   <= r_valid_fetch;
         end else begin
+            r_pc            <= r_pc_next;
+            r_pc_fetch      <= r_pc;
             r_instn_fetch   <= i_inst;
             r_valid_fetch   <= 1;
         end
