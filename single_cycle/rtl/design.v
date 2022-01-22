@@ -38,7 +38,7 @@ module toplevel (
     localparam p_DATA_NUM  = 2 ** p_DATA_ADDR_LEN;
     localparam p_CODE_FILE = "code.data";
     
-    reg[15:0] inst_memory[p_INST_NUM];
+    reg[15:0] inst_memory[p_INST_NUM-1:0];
 
     initial begin
         $readmemb(p_CODE_FILE, inst_memory);
