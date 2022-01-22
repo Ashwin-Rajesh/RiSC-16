@@ -67,10 +67,10 @@ module mem_data_test;
 
   // Clocking block to drive TB outputs to DUT
   clocking cb_mem @(posedge clk);
-    output negedge address;
-    output negedge dataIn;
+    output #1 address;
+    output #1 dataIn;
 
-    output negedge writeEn;  
+    output #1 writeEn;  
   endclocking
 
   // Generate clock signal                          
@@ -79,19 +79,25 @@ module mem_data_test;
   initial begin
     $display("Starting data memory test");
       
+		// Prepare dumpfile
+		$dumpfile("dump.vcd");
+    $dumpvars(0, mem_data_test);
+    
       // Initialize objects
       reference 	= new();
       cg_inst		= new();
 
       // Main loop
       repeat(p_MAX_TESTS) begin
-          // Random addresses and data
-          cb_mem.address		<= $random;
-          cb_mem.dataIn		  <= $random;
-          cb_mem.writeEn		<= $random;
+          @(negedge clk)
         
-          @(cb_mem);
+          // Random addresses and data
+          cb_mem.address		<= 0;
+          cb_mem.dataIn		  	<= $random;
+          cb_mem.writeEn		<= $random;
 
+          @(negedge clk);
+          
           // Check if reads match
           assert (reference.read_mem(address) == dataOut) else begin
             $display("Read mismatch. Address %d : %h vs %h", address, dataOut, reference.read_mem(address));

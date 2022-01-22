@@ -35,7 +35,7 @@ module mem_data #(
     input i_wr_en,                              // High to write on positive edge
 
     input[p_ADDR_LEN-1:0]        i_addr,        // Address of data
-    output reg[p_WORD_LEN-1:0]   o_rd_data,     // Data for reading (asynchronous)
+  	output reg[p_WORD_LEN-1:0]   o_rd_data = 0,   // Data for reading (asynchronous)
   	input[p_WORD_LEN-1:0]        i_wr_data      // Data for writing (on posedge)
 );
 
@@ -54,7 +54,7 @@ module mem_data #(
         end
     end
 
-    always @(negedge i_clk) begin
+  	always @(posedge i_clk) begin
         // Write to memory
         if(i_wr_en)
             r_memory[w_addr_trunc]   <= i_wr_data;
