@@ -318,4 +318,8 @@ That was a > 10 times improvement!! The previous version used way too many LUTs 
 
 This is because a single-cycle reset of memory is very expensive to implement. Here, for memory, we use distributed RAM where the LUT SRAM bits are written to using an address input. But, we can only write to one bit at a time. We cannot reset all values in the LUT at once.
 
-Still, distributed RAM (LUTs) are being used instead of block RAMs to implement memory because the read is asynchronous. To use block RAM, the read needs to synchronous, requiring a multi-cycle design. This will be our next challenge!
+Still, distributed RAM (LUTs) are being used instead of block RAMs to implement memory because the read is asynchronous. To use block RAM, the read needs to synchronous, requiring a multi-cycle design. 
+
+Also, the timing constraint imposed by the single-cycle design, where a read can take at most one cycle reduces the maximum clock frequency. On the nexys 4 ddr, this was 70MHz. 
+
+Both these issues can be solved using a pipelined multicycle architecture. This will be our next challenge!
