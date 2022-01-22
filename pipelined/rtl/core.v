@@ -163,27 +163,27 @@ module core (
     // The next instruction to fetch is stored here.
     // i_inst contains instruction newly fetched in this cycle
     reg[15:0] r_pc;
-    reg[15:0] r_pc_next;
+    reg[15:0] r_pc_curr;
 
     initial begin
         r_pc        = 0;
     end
 
-    assign o_pc_next = r_pc;
+    assign o_pc_next = r_pc_curr;
 
     always @(*) begin
         // BEQ after execute stage
         if(r_opcode_exec == BEQ)
             if(r_result_eq_exec)
-                r_pc_next    <= r_pc_exec + 1 + r_operand_imm_exec;
+                r_pc_curr    <= r_pc_exec + 1 + r_operand_imm_exec;
             else
-                r_pc_next    <= r_pc_exec + 1;
+                r_pc_curr    <= r_pc_exec + 1;
         // JALR after decode stage
         else if(r_opcode_decode == JALR)
-            r_pc_next    <= r_src2_decode;
+            r_pc_curr    <= w_operand1_decode;
         // Any other instruction
         else
-            r_pc_next    <= r_pc + 1;
+            r_pc_curr    <= r_pc;
     end
 
     // Instruction (including stall)
@@ -205,8 +205,8 @@ module core (
             r_instn_fetch   <= r_instn_fetch;
             r_valid_fetch   <= r_valid_fetch;
         end else begin
-            r_pc            <= r_pc_next;
-            r_pc_fetch      <= r_pc;
+            r_pc            <= r_pc_curr + 1;
+            r_pc_fetch      <= r_pc_curr;
             r_instn_fetch   <= i_inst;
             r_valid_fetch   <= 1;
         end
@@ -355,31 +355,39 @@ module core (
 
     // Forward values for operand 1
     always @(*) begin
-        // From EXEC
-        if(r_src1_decode == r_tgt_exec)
-            r_operand1_fwd <= r_result_alu_exec;
-        // From MEM
-        else if(r_src1_decode == r_tgt_mem)
-            r_operand1_fwd <= w_result_mem;
-        // From WB
-        else if(r_src1_decode == r_tgt_wb)
-            r_operand1_fwd <= r_result_wb;
-        else
-            r_operand1_fwd <= w_operand1_decode;
+        if(r_src1_decode == 0)
+            r_operand1_fwd <= 0;
+        else begin
+            // From EXEC
+            if(r_src1_decode == r_tgt_exec)
+                r_operand1_fwd <= r_result_alu_exec;
+            // From MEM
+            else if(r_src1_decode == r_tgt_mem)
+                r_operand1_fwd <= w_result_mem;
+            // From WB
+            else if(r_src1_decode == r_tgt_wb)
+                r_operand1_fwd <= r_result_wb;
+            else
+                r_operand1_fwd <= w_operand1_decode;
+        end
     end
     // Forward values for operand 2
     always @(*) begin
-        // From EXEC
-        if(r_src2_decode == r_tgt_exec)
-            r_operand2_fwd <= r_result_alu_exec;
-        // From MEM
-        else if(r_src2_decode == r_tgt_mem)
-            r_operand2_fwd <= w_result_mem;
-        // From WB
-        else if(r_src2_decode == r_tgt_wb)
-            r_operand2_fwd <= r_result_wb;
-        else
-            r_operand2_fwd <= w_operand2_decode;
+        if(r_src1_decode == 0)
+            r_operand1_fwd <= 0;
+        else begin
+            // From EXEC
+            if(r_src2_decode == r_tgt_exec)
+                r_operand2_fwd <= r_result_alu_exec;
+            // From MEM
+            else if(r_src2_decode == r_tgt_mem)
+                r_operand2_fwd <= w_result_mem;
+            // From WB
+            else if(r_src2_decode == r_tgt_wb)
+                r_operand2_fwd <= r_result_wb;
+            else
+                r_operand2_fwd <= w_operand2_decode;
+        end
     end
 
     // Decide the operation and sources for the ALU
@@ -422,7 +430,7 @@ module core (
             end
             JALR: begin
                 r_aluop    = 1'b0;
-                r_aluina   = r_operand1_fwd;
+                r_aluina   = r_pc_decode + 1;
                 r_aluinb   = r_operand2_fwd;
             end
         endcase
