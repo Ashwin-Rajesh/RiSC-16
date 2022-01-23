@@ -488,7 +488,7 @@ module core (
             r_pc_exec           <= r_pc_decode;
             r_tgt_exec          <= r_tgt_decode;
             r_opcode_exec       <= r_opcode_decode;
-            r_swdata_exec       <= r_operand2_decode;
+            r_swdata_exec       <= r_operand2_fwd;
             r_result_eq_exec    <= w_alueq;
             r_result_alu_exec   <= w_aluout;
             r_operand_imm_exec  <= r_operand_imm_decode;
