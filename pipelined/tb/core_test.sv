@@ -34,16 +34,17 @@ SOFTWARE.
 // Test the processor core
 module core_test;
 	// Parameters for configuration
-	localparam p_INST_COUNT = 10000;
+	localparam p_INST_COUNT = 100000;
 	localparam p_DATA_ADDR_LEN = 10;
 	localparam p_DATA_COUNT = 2 ** p_DATA_ADDR_LEN;
-	localparam p_LOG_TRACE = 1;
-  	localparam p_LOG_TRACE_DETAILED = 1;
+	localparam p_LOG_TRACE = 0;
+  	localparam p_LOG_TRACE_DETAILED = 0;
 	
 	// Instruction to execute and instruction window
 	instruction inst;
   	instruction inst2;
   	instruction inst_window[$];
+  	instruction inst_hist[$];
 	int pc_pointer = 0;
 
 	// Signals to connect to the DUT
@@ -208,6 +209,7 @@ module core_test;
 		inst.cg.sample();
 		inst2 = new inst;
       	inst_window.push_back(inst2);
+      	inst_hist.push_back(inst2);
 	endfunction
 	
 	// Verify that DUT and simulator have identical states in commit
@@ -240,7 +242,12 @@ module core_test;
 				$display(sim.data_mem.write_hist);
 				$display(sim.data_mem.write_data_hist);
 			end
-          	$display();
+          
+          	if(failed)
+              	for(int i = inst_hist.size() - 50; i < inst_hist.size(); i++)
+                  $display("%d : %s", i, inst_hist[i].to_string());
+          
+            $display();
 		end
 		
 		return ~failed;
