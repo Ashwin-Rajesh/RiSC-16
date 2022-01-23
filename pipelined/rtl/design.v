@@ -36,7 +36,7 @@ module toplevel (
     localparam p_INST_NUM = 1024;
     localparam p_DATA_ADDR_LEN = 10;
     localparam p_DATA_NUM  = 2 ** p_DATA_ADDR_LEN;
-    localparam p_CODE_FILE = "code.data";
+    parameter p_CODE_FILE = "code.data";
     
     reg[15:0] inst_memory[p_INST_NUM-1:0];
 
@@ -49,15 +49,20 @@ module toplevel (
     wire[15:0] w_addr;
     wire w_wr_en;
 
+    reg[15:0] r_addr_prev;
+    
+    always @(posedge clk)
+        r_addr_prev <= w_addr;
+
     // The DUT	
     core core_dut (
         .i_clk(clk),
         .i_rst(0),
 
         .i_inst(inst_memory[pc]),
-        .o_pc(pc),
+        .o_pc_next(pc),
 
-      .i_mem_rd_data((w_addr < p_DATA_NUM) ? w_rd_data : 16'b0),
+        .i_mem_rd_data((r_addr_prev < p_DATA_NUM) ? w_rd_data : 16'b0),
         .o_mem_wr_data(w_wr_data),
         .o_mem_addr(w_addr),
         .o_mem_wr_en(w_wr_en)
@@ -78,4 +83,3 @@ module toplevel (
 endmodule
 
 `endif
-
