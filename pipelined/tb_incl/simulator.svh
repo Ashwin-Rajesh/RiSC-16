@@ -57,7 +57,7 @@ class simulator #(int INSTRUCTION_COUNT=100, int DATA_COUNT=100);
 
   // Show state of the simulator (program_count : next_inst : register values)
   function string to_string();
-    string temp = $sformatf("%3d : %-16s : ", program_counter_prev, inst.to_string());
+    string temp = $sformatf("%4h : %-16s : ", program_counter_prev, inst.to_string());
     for(int i = 0; i < 8; i = i + 1)
       temp = $sformatf("%s r%1d-%h", temp, i, registers.read_reg(i));
     return temp;
