@@ -118,9 +118,6 @@ module mem_reg_test;
         assert (^out1 !== 1'bx);
         assert (^out2 !== 1'bx);
         
-        // Wait for clock
-        @(cb_reg);
-      
         // Make sure reads match
         assert (reference.read_reg(src1) === out1) else begin
           $display("%t Source 1 mismatch. Reg %d : %h(dut) vs %h", $time, src1, out1, reference.read_reg(src1));
@@ -129,6 +126,9 @@ module mem_reg_test;
           $display("%t Source 2 mismatch. Reg %d : %h(dut) vs %h", $time, src2, out2, reference.read_reg(src2));            
         end;
 
+      	// Wait for clock
+        @(cb_reg);
+      
         // Write to reference if needed
         if(writeEn) begin
           reference.write_reg(tgt, inp);
