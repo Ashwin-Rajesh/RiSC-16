@@ -90,6 +90,9 @@ module core (
 
     reg[15:0] r_operand_imm_decode  = 0;
     reg[15:0] r_operand_imm_exec    = 0;
+    reg[15:0] r_operand1_decode     = 0;
+    reg[15:0] r_operand2_decode     = 0;
+
     wire[15:0] w_operand1_decode;
     wire[15:0] w_operand2_decode;
 
@@ -180,7 +183,7 @@ module core (
                 r_pc_curr    <= r_pc_exec + 1;
         // JALR after decode stage
         else if(r_opcode_decode == JALR)
-            r_pc_curr    <= w_operand1_decode;
+            r_pc_curr    <= r_operand1_decode;
         // Any other instruction
         else
             r_pc_curr    <= r_pc;
@@ -193,17 +196,16 @@ module core (
         r_instn_fetch   <= 0;
         r_valid_fetch   <= 0;
     end else begin
-        // If stall originates from fetch, add a NOP
-        if(r_stall_fetch) begin
-            r_pc            <= r_pc;
-            r_pc_fetch      <= r_pc_fetch;
-            r_instn_fetch   <= 0;
-            r_valid_fetch   <= 0;
-        end else if(w_stall_fetch) begin
+        if(w_stall_decode) begin
             r_pc            <= r_pc;
             r_pc_fetch      <= r_pc_fetch;
             r_instn_fetch   <= r_instn_fetch;
             r_valid_fetch   <= r_valid_fetch;
+        end else if(r_stall_fetch) begin
+            r_pc            <= r_pc;
+            r_pc_fetch      <= r_pc_fetch;
+            r_instn_fetch   <= 0;
+            r_valid_fetch   <= 0;
         end else begin
             r_pc            <= r_pc_curr + 1;
             r_pc_fetch      <= r_pc_curr;
@@ -233,8 +235,8 @@ module core (
     wire[6:0] w_simm_decode   = r_instn_fetch[6:0];
 
     // Modify signed and long immediate to get actual immediate that will be used
-    wire[15:0] w_simm_ext_decode = {{25{w_simm_decode[6]}}, w_simm_decode};
-    wire[15:0] w_limm_ext_decode = {w_limm_decode, {9{1'b0}}};
+  	wire[15:0] w_simm_ext_decode = {{9{w_simm_decode[6]}}, w_simm_decode};
+  	wire[15:0] w_limm_ext_decode = {w_limm_decode, {6{1'b0}}};
 
     // Decide the source and destination addresses
     always @(*) begin
@@ -305,26 +307,29 @@ module core (
     );
 
     always @(posedge i_clk) begin
-        // Insert bubbe
-        if(r_stall_decode) begin
-            r_valid_decode  <= 0;
-            r_pc_decode     <= r_pc_decode;
-            r_tgt_decode    <= 3'b0;
-            r_src1_decode   <= 3'b0;
-            r_src2_decode   <= 3'b0;
-            r_opcode_decode <= ADD;
-            r_operand_imm_decode <= 15'b0;
-        end
-        // Stall pipeline (pause)
-        else if(w_stall_decode) begin
-            r_valid_decode  <= r_valid_decode;
-            r_pc_decode     <= r_pc_decode;
-            r_tgt_decode    <= r_tgt_decode;
-            r_src1_decode   <= r_src1_decode;
-            r_src2_decode   <= r_src2_decode;
-            r_opcode_decode <= r_opcode_decode;
+        // Stall
+        if(w_stall_exec) begin
+            r_valid_decode       <= r_valid_decode;
+            r_pc_decode          <= r_pc_decode;
+            r_tgt_decode         <= r_tgt_decode;
+            r_src1_decode        <= r_src1_decode;
+            r_src2_decode        <= r_src2_decode;
+            r_opcode_decode      <= r_opcode_decode;
+            r_operand1_decode    <= r_operand1_decode;
+            r_operand2_decode    <= r_operand2_decode;
             r_operand_imm_decode <= r_operand_imm_decode;
-        // Send to next stage
+        // Insert bubbe
+        end else if(r_stall_decode) begin
+            r_valid_decode       <= 0;
+            r_pc_decode          <= r_pc_decode;
+            r_tgt_decode         <= 3'b0;
+            r_src1_decode        <= 3'b0;
+            r_src2_decode        <= 3'b0;
+            r_opcode_decode      <= ADD;
+            r_operand1_decode    <= 0;
+            r_operand2_decode    <= 0;
+            r_operand_imm_decode <= 15'b0;
+        // Pass through
         end else begin
             r_valid_decode  <= r_valid_fetch;
             r_pc_decode     <= r_pc_fetch;
@@ -332,6 +337,8 @@ module core (
             r_src1_decode   <= r_src1_next;
             r_src2_decode   <= r_src2_next;
             r_opcode_decode <= w_opcode_decode;
+            r_operand1_decode    <= w_operand1_decode;
+            r_operand2_decode    <= w_operand2_decode;
             r_operand_imm_decode <= r_imm_next;
         end
     end
@@ -368,13 +375,13 @@ module core (
             else if(r_src1_decode == r_tgt_wb)
                 r_operand1_fwd <= r_result_wb;
             else
-                r_operand1_fwd <= w_operand1_decode;
+                r_operand1_fwd <= r_operand1_fwd;
         end
     end
     // Forward values for operand 2
     always @(*) begin
-        if(r_src1_decode == 0)
-            r_operand1_fwd <= 0;
+      	if(r_src2_decode == 0)
+            r_operand2_fwd <= 0;
         else begin
             // From EXEC
             if(r_src2_decode == r_tgt_exec)
@@ -386,7 +393,7 @@ module core (
             else if(r_src2_decode == r_tgt_wb)
                 r_operand2_fwd <= r_result_wb;
             else
-                r_operand2_fwd <= w_operand2_decode;
+                r_operand2_fwd <= r_operand2_decode;
         end
     end
 
@@ -447,18 +454,8 @@ module core (
     );
 
     always @(posedge i_clk) begin
-        // Insert bubble
-        if(r_stall_exec) begin
-            r_valid_exec        <= 0;
-            r_pc_exec           <= r_pc_exec;
-            r_tgt_exec          <= 3'b0;
-            r_opcode_exec       <= 3'b0;
-            r_swdata_exec       <= 0;
-            r_result_eq_exec    <= 0;
-            r_result_alu_exec   <= 0;
-            r_operand_imm_exec  <= 0;
-        // Stall (hold on to prev value)
-        end else if(w_stall_exec) begin
+        // Stall
+        if(w_stall_mem) begin
             r_valid_exec        <= r_valid_exec;
             r_pc_exec           <= r_pc_exec;
             r_tgt_exec          <= r_tgt_exec;
@@ -467,13 +464,23 @@ module core (
             r_result_eq_exec    <= r_result_eq_exec;
             r_result_alu_exec   <= r_result_alu_exec;
             r_operand_imm_exec  <= r_operand_imm_exec;
-        // Pass instruction through
+        // Insert bubble
+        end else if(r_stall_exec) begin
+            r_valid_exec        <= 0;
+            r_pc_exec           <= r_pc_exec;
+            r_tgt_exec          <= 3'b0;
+            r_opcode_exec       <= 3'b0;
+            r_swdata_exec       <= 0;
+            r_result_eq_exec    <= 0;
+            r_result_alu_exec   <= 0;
+            r_operand_imm_exec  <= 0;
+        // Pass through
         end else begin
             r_valid_exec        <= r_valid_decode;
             r_pc_exec           <= r_pc_decode;
             r_tgt_exec          <= r_tgt_decode;
             r_opcode_exec       <= r_opcode_decode;
-            r_swdata_exec       <= w_operand2_decode;
+            r_swdata_exec       <= r_operand2_decode;
             r_result_eq_exec    <= w_alueq;
             r_result_alu_exec   <= w_aluout;
             r_operand_imm_exec  <= r_operand_imm_decode;
@@ -491,21 +498,21 @@ module core (
     assign o_mem_wr_en      = (r_opcode_exec == SW);
 
     always @(posedge i_clk) begin
-        // Insert bubble
-        if(r_stall_mem) begin
-            r_valid_mem         <= 0;
-            r_pc_mem            <= r_pc_mem;
-            r_opcode_mem        <= r_opcode_mem;
-            r_tgt_mem           <= 0;
-            r_result_alu_mem    <= 0;
-        // Stall (hold on to prev value)
-        end else if(w_stall_mem) begin
+        // Stall
+        if(w_stall_wb) begin
             r_valid_mem         <= r_valid_mem;
             r_pc_mem            <= r_pc_mem;
             r_opcode_mem        <= r_opcode_mem;
             r_tgt_mem           <= r_tgt_mem;
             r_result_alu_mem    <= r_result_alu_mem;        
-        // Move pipeline forward
+        // Insert bubble
+        end else if(r_stall_mem) begin
+            r_valid_mem         <= 0;
+            r_pc_mem            <= r_pc_mem;
+            r_opcode_mem        <= r_opcode_mem;
+            r_tgt_mem           <= 0;
+            r_result_alu_mem    <= 0;
+        // Pass through
         end else begin
             r_valid_mem         <= r_valid_exec;
             r_pc_mem            <= r_pc_exec;
@@ -515,7 +522,7 @@ module core (
         end
     end
 
-    assign w_result_mem = (r_opcode_decode == LW) ? i_mem_rd_data : r_result_alu_mem;
+  	assign w_result_mem = (r_opcode_mem == LW) ? i_mem_rd_data : r_result_alu_mem;
 
     // ---------------------------
     // Writeback stage
@@ -528,20 +535,13 @@ module core (
     // to define the pipeline register flow!
 
     always @(posedge i_clk) begin
-        // Insert bubble
+        // Create bubble
         if(r_stall_wb) begin
             r_valid_wb          <= 0;
             r_pc_wb             <= r_pc_wb;
             r_opcode_wb         <= r_opcode_wb;
             r_tgt_wb            <= 0;
             r_result_wb         <= 0;
-        // Stall (hold on to prev value)
-        end else if(w_stall_wb) begin
-            r_valid_wb          <= r_valid_wb;
-            r_pc_wb             <= r_pc_wb;
-            r_opcode_wb         <= r_opcode_wb;
-            r_tgt_wb            <= r_tgt_wb;
-            r_result_wb         <= r_result_wb;
         // Move pipeline forward
         end else begin
             r_valid_wb          <= r_valid_mem;
