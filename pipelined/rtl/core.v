@@ -327,8 +327,8 @@ module core (
             r_src1_decode        <= r_src1_decode;
             r_src2_decode        <= r_src2_decode;
             r_opcode_decode      <= r_opcode_decode;
-            r_operand1_decode    <= r_operand1_decode;
-            r_operand2_decode    <= r_operand2_decode;
+            r_operand1_decode    <= ((r_src1_decode !== 0) && (r_src1_decode == r_tgt_wb)) ? r_result_wb : r_operand1_decode;
+            r_operand2_decode    <= ((r_src2_decode !== 0) && (r_src2_decode == r_tgt_wb)) ? r_result_wb : r_operand2_decode;
             r_operand_imm_decode <= r_operand_imm_decode;
         // Insert bubbe
         end else if(r_stall_decode) begin
