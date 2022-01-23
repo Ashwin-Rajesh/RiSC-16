@@ -134,7 +134,7 @@ module core (
     wire w_stall_wb;
 
     assign w_stall_fetch  = r_stall_fetch || w_stall_decode;
-    assign w_stall_decode = r_stall_decode || w_stall_mem;
+    assign w_stall_decode = r_stall_decode || w_stall_exec;
     assign w_stall_exec   = r_stall_exec || w_stall_mem;
     assign w_stall_mem    = r_stall_mem || w_stall_wb;
     assign w_stall_wb     = r_stall_wb;
