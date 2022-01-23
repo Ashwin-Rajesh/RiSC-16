@@ -34,10 +34,11 @@ SOFTWARE.
 // Test the processor core
 module core_test;
 	// Parameters for configuration
-	localparam p_INST_COUNT = 100000;
+	localparam p_INST_COUNT = 10000;
 	localparam p_DATA_ADDR_LEN = 10;
 	localparam p_DATA_COUNT = 2 ** p_DATA_ADDR_LEN;
 	localparam p_LOG_TRACE = 1;
+  	localparam p_LOG_TRACE_DETAILED = 1;
 	
 	// Instruction to execute and instruction window
 	instruction inst;
@@ -59,8 +60,12 @@ module core_test;
   	wire[15:0] w_rd_data;
   	wire[15:0] w_wr_data;
   	wire[15:0] w_addr;
-	wire w_wr_en;
+  	wire w_wr_en;
 
+  	reg[15:0] r_addr_prev;
+	
+  	always @(posedge clk) r_addr_prev <= w_addr;
+	
 	// The DUT	
 	core core_dut (
 		.i_clk(clk),
@@ -69,12 +74,12 @@ module core_test;
 		.i_inst(inst_reg),
 		.o_pc_next(pc),
 
-    	.i_mem_rd_data((w_addr < p_DATA_COUNT) ? w_rd_data : 0),
+      	.i_mem_rd_data((r_addr_prev < p_DATA_COUNT) ? w_rd_data : 0),
 		.o_mem_wr_data(w_wr_data),
 		.o_mem_addr(w_addr),
 		.o_mem_wr_en(w_wr_en)
 	);
-	
+  
 	mem_data #(
     	.p_WORD_LEN(16),
 		.p_ADDR_LEN(p_DATA_ADDR_LEN)
@@ -143,7 +148,7 @@ module core_test;
           	@(update_evt);
 			
           	// Show the instruction queue
-          	if(p_LOG_TRACE) begin
+          	if(p_LOG_TRACE_DETAILED) begin
           		$display("Instruction window");
                 foreach(inst_window[i])
                     $display(inst_window[i].to_string());
@@ -165,13 +170,19 @@ module core_test;
 		$finish;
 	end
 	
+  	bit disp_detailed = 0;
+  
   	always @(negedge clk) begin
     	// Display the states of DUT and simulator
-		if(p_LOG_TRACE) begin
+		disp_detailed = 0;
+      	if(p_LOG_TRACE) begin
           	$display("----------------------------------------------------");
           	$display("time: %t", $time);
             $display("dut : %s", dut_to_string());
-            $display("%s", dut_to_string_detailed());
+          	$display("mem : %4h", mem_data.r_memory[33]);	
+                            
+          	if(p_LOG_TRACE_DETAILED || disp_detailed)
+            	$display("%s", dut_to_string_detailed());
 		end
 
 		// Send the next instruction if last PC requested was different
@@ -222,8 +233,10 @@ module core_test;
 				$display("Verification failed!");
 			$display("dut : %s", dut_to_string());
 			$display("sim : %s", sim.to_string());
+          	if(failed)
+              $display(dut_to_string_detailed());
 		
-			if(inst.opcode == LW) begin
+          	if(sim.inst.opcode == LW) begin
 				$display(sim.data_mem.write_hist);
 				$display(sim.data_mem.write_data_hist);
 			end
@@ -261,12 +274,10 @@ module core_test;
 				opcode_to_string(core_dut.r_opcode_wb));
 		temp = $sformatf("%sResults           : %4s %4s %4h %4h %4h\n", temp, "", "", core_dut.r_result_alu_exec, core_dut.w_result_mem, core_dut.r_result_wb);
 		temp = $sformatf("%sTarget            : %4s %4d %4d %4d %4d\n", temp, "", core_dut.r_tgt_decode, core_dut.r_tgt_exec, core_dut.r_tgt_mem, core_dut.r_tgt_wb);
-		temp = $sformatf("%sSource1           : %4s %4d %4s %4s %4s\n", temp, "", core_dut.r_src1_decode, "", "", "");
-		temp = $sformatf("%sSource2           : %4s %4d %4s %4s %4s\n", temp, "", core_dut.r_src2_decode, "", "", "");
-		temp = $sformatf("%sOperand1          : %4s %4h:%4h %4s %4s\n", temp, "", core_dut.r_operand1_decode, core_dut.r_operand1_fwd, "", "");
-		temp = $sformatf("%sOperand2          : %4s %4h:%4h %4s %4s\n", temp, "", core_dut.r_operand2_decode, core_dut.r_operand2_fwd, "", "");
-		temp = $sformatf("%sImmediate operand : %4s %4h %4h %4s %4s\n", temp, "", core_dut.r_operand_imm_decode, core_dut.r_operand_imm_exec, "", "");
-
+      temp = $sformatf("%sDecode stage output : op1 %4h, op2 %4h, src1 %1d, src2 %1d, op_imm %4h\n", temp, core_dut.r_operand1_decode, core_dut.r_operand2_decode, core_dut.r_src1_decode, core_dut.r_src2_decode, core_dut.r_operand_imm_decode);
+      temp = $sformatf("%sExecute stage input : op1 %4h, op2 %4h, aluina %4h, aluinb %4h, aluop %1d\n", temp, core_dut.r_operand1_fwd, core_dut.r_operand2_fwd, core_dut.r_aluina, core_dut.r_aluinb, core_dut.r_aluop);
+      temp = $sformatf("%sMemory : addr %4h datain %4h wren %1d dataout %4h", temp, w_addr, w_rd_data, w_wr_en && (w_addr < p_DATA_COUNT), w_wr_data);              
+      
 		return temp;
     endfunction
 
