@@ -136,9 +136,9 @@ module core_test;
 				$display("%d instructions completed", i);
 												
 			// Flush invalid bubbles from the pipeline
-			while(~core_dut.r_valid_wb) begin
+			do begin
 				@(negedge clk);
-			end
+            end while(~core_dut.r_valid_wb);
           	
           	@(update_evt);
 			
@@ -191,14 +191,14 @@ module core_test;
       	->update_evt;
 
     end
-  
+  	
 	function generate_inst();
 		inst.randomize();
 		inst.cg.sample();
 		inst2 = new inst;
       	inst_window.push_back(inst2);
 	endfunction
-
+	
 	// Verify that DUT and simulator have identical states in commit
 	function bit verify_status();
 		bit failed = 0;
@@ -232,35 +232,42 @@ module core_test;
 		
 		return ~failed;
 	endfunction
-
+	
 	// Return string representation of the DUT state (program_count : next_inst : register values)
 	function string dut_to_string();
 		automatic string temp = "";
-			
-			temp = $sformatf("%3d : %-17s: ", core_dut.r_pc_wb, inst.to_string());
-			
-			for(int i = 0; i < 8; i = i + 1)
-              temp = $sformatf("%s r%1d-%h", temp, i, core_dut.regfile_inst.r_memory[i]);
+		
+      	temp = $sformatf("%4h : %-17s: ", core_dut.r_pc_wb, inst.to_string());
+		
+		for(int i = 0; i < 8; i = i + 1)
+        	temp = $sformatf("%s r%1d-%h", temp, i, core_dut.regfile_inst.r_memory[i]);
 		
 		return temp;
 	endfunction
-  
+	
     function string dut_to_string_detailed();
-       automatic string temp = "";
-      
-      temp = $sformatf("%sStall origins     : %4d %4d %4d %4d %4d \n", "", core_dut.r_stall_fetch, core_dut.r_stall_decode, core_dut.r_stall_exec, core_dut.r_stall_mem, core_dut.r_stall_wb);
-      temp = $sformatf("%sStalled           : %4d %4d %4d %4d %4d \n", temp, core_dut.w_stall_fetch, core_dut.w_stall_decode, core_dut.w_stall_exec, core_dut.w_stall_mem, core_dut.w_stall_wb);
-	  temp = $sformatf("%sValid             : %4d %4d %4d %4d %4d \n", temp, core_dut.r_valid_fetch, core_dut.r_valid_decode, core_dut.r_valid_exec, core_dut.r_valid_mem, core_dut.r_valid_wb);
-      temp = $sformatf("%sProgram counters  : %4h %4h %4h %4h %4h \n", temp, core_dut.r_pc_fetch, core_dut.r_pc_decode, core_dut.r_pc_exec, core_dut.r_pc_mem, core_dut.r_pc_wb);
-      temp = $sformatf("%sOpcodes           : ", temp);
-      temp = $sformatf("%s%4s %4s %4s %4s %4s\n", temp, 
-        	opcode_to_string(core_dut.w_opcode_fetch), 
-        	opcode_to_string(core_dut.r_opcode_decode), 
-        	opcode_to_string(core_dut.r_opcode_exec), 
-        	opcode_to_string(core_dut.r_opcode_mem), 
-        	opcode_to_string(core_dut.r_opcode_wb)); 
-      
-      return temp;
+		automatic string temp = "";
+		
+		temp = $sformatf("%sStall origins     : %4d %4d %4d %4d %4d \n", "", core_dut.r_stall_fetch, core_dut.r_stall_decode, core_dut.r_stall_exec, core_dut.r_stall_mem, core_dut.r_stall_wb);
+		temp = $sformatf("%sStalled           : %4d %4d %4d %4d %4d \n", temp, core_dut.w_stall_fetch, core_dut.w_stall_decode, core_dut.w_stall_exec, core_dut.w_stall_mem, core_dut.w_stall_wb);
+		temp = $sformatf("%sValid             : %4d %4d %4d %4d %4d \n", temp, core_dut.r_valid_fetch, core_dut.r_valid_decode, core_dut.r_valid_exec, core_dut.r_valid_mem, core_dut.r_valid_wb);
+		temp = $sformatf("%sProgram counters  : %4h %4h %4h %4h %4h \n", temp, core_dut.r_pc_fetch, core_dut.r_pc_decode, core_dut.r_pc_exec, core_dut.r_pc_mem, core_dut.r_pc_wb);
+		temp = $sformatf("%sOpcodes           : ", temp);
+		temp = $sformatf("%s%4s %4s %4s %4s %4s\n", temp, 
+				opcode_to_string(core_dut.w_opcode_fetch), 
+				opcode_to_string(core_dut.r_opcode_decode), 
+				opcode_to_string(core_dut.r_opcode_exec), 
+				opcode_to_string(core_dut.r_opcode_mem), 
+				opcode_to_string(core_dut.r_opcode_wb));
+		temp = $sformatf("%sResults           : %4s %4s %4h %4h %4h\n", temp, "", "", core_dut.r_result_alu_exec, core_dut.w_result_mem, core_dut.r_result_wb);
+		temp = $sformatf("%sTarget            : %4s %4d %4d %4d %4d\n", temp, "", core_dut.r_tgt_decode, core_dut.r_tgt_exec, core_dut.r_tgt_mem, core_dut.r_tgt_wb);
+		temp = $sformatf("%sSource1           : %4s %4d %4s %4s %4s\n", temp, "", core_dut.r_src1_decode, "", "", "");
+		temp = $sformatf("%sSource2           : %4s %4d %4s %4s %4s\n", temp, "", core_dut.r_src2_decode, "", "", "");
+		temp = $sformatf("%sOperand1          : %4s %4h:%4h %4s %4s\n", temp, "", core_dut.r_operand1_decode, core_dut.r_operand1_fwd, "", "");
+		temp = $sformatf("%sOperand2          : %4s %4h:%4h %4s %4s\n", temp, "", core_dut.r_operand2_decode, core_dut.r_operand2_fwd, "", "");
+		temp = $sformatf("%sImmediate operand : %4s %4h %4h %4s %4s\n", temp, "", core_dut.r_operand_imm_decode, core_dut.r_operand_imm_exec, "", "");
+
+		return temp;
     endfunction
 
 	function string opcode_to_string(bit[2:0] inp);
