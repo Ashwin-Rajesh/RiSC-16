@@ -60,49 +60,57 @@ module core (
     //
     // For communication between adjacent stages
     // ---------------------------
+
+    // Is the instruction here valid (not a bubble)
     reg r_valid_fetch   = 0;
     reg r_valid_decode  = 0;
     reg r_valid_exec    = 0;
     reg r_valid_mem     = 0;
     reg r_valid_wb      = 0;
 
+    // The PC of the instruction (for debugging and branch address computation)
     reg[15:0] r_pc_fetch        = 0;
     reg[15:0] r_pc_decode       = 0;
     reg[15:0] r_pc_exec         = 0;
     reg[15:0] r_pc_mem          = 0;    // for debugging only
     reg[15:0] r_pc_wb           = 0;    // for debugging only
 
+    // Instruction / opcode
     reg[15:0] r_instn_fetch     = 0;
-
     wire[2:0] w_opcode_fetch    = r_instn_fetch[15:13];
     reg[2:0] r_opcode_decode    = 0;
     reg[2:0] r_opcode_exec      = 0;
     reg[2:0] r_opcode_mem       = 0;    // for debugging only
     reg[2:0] r_opcode_wb        = 0;    // for debugging only
 
+    // Source register addresses
     reg[2:0] r_src1_decode      = 0;
     reg[2:0] r_src2_decode      = 0;
 
+    // Target register addresses
     reg[2:0] r_tgt_decode       = 0;
     reg[2:0] r_tgt_exec         = 0;
     reg[2:0] r_tgt_mem          = 0;
     reg[2:0] r_tgt_wb           = 0;
 
+    // ALU operand values
     reg[15:0] r_operand_imm_decode  = 0;
     reg[15:0] r_operand_imm_exec    = 0;
     reg[15:0] r_operand1_decode     = 0;
     reg[15:0] r_operand2_decode     = 0;
 
-    wire[15:0] w_operand1_decode;
-    wire[15:0] w_operand2_decode;
+    // Forwarded values of operand 1 and 2 into execute stage
+    reg[15:0]   r_operand1_fwd;
+    reg[15:0]   r_operand2_fwd;
 
-    reg[15:0] r_swdata_exec     = 0;
+    // Value to store in MEM stage from ALU stage 
+    reg[15:0]   r_swdata_exec     = 0;
 
+    // Result values
     reg[15:0] r_result_alu_exec = 0;
     reg[15:0] r_result_alu_mem  = 0;
     wire[15:0] w_result_mem;        // Result after mem can be from ALU or MEM
     reg[15:0] r_result_wb       = 0;
-
     reg r_result_eq_exec        = 0;
 
     // ---------------------------
@@ -183,7 +191,7 @@ module core (
                 r_pc_curr    <= r_pc_exec + 1;
         // JALR after decode stage
         else if(r_opcode_decode == JALR)
-            r_pc_curr    <= r_operand1_decode;
+            r_pc_curr    <= r_operand1_fwd;
         // Any other instruction
         else
             r_pc_curr    <= r_pc;
@@ -225,6 +233,10 @@ module core (
     reg[2:0] r_src1_next;
     reg[2:0] r_src2_next;
     reg[15:0] r_imm_next;
+
+    // Regfile outputs
+    wire[15:0] w_operand1_rd;
+    wire[15:0] w_operand2_rd;
 
     // Split the instruction into parts
     wire[2:0] w_opcode_decode = r_instn_fetch[15:13];
@@ -299,8 +311,8 @@ module core (
         .i_src2(r_src2_next),               // Read address 2
         .i_tgt(r_tgt_mem),                  // Write register address
 
-        .o_src1_data(w_operand1_decode),    // Read output 1 (asynchronous)
-        .o_src2_data(w_operand2_decode),    // Read output 2 (asynchronous)
+        .o_src1_data(w_operand1_rd),    // Read output 1 (asynchronous)
+        .o_src2_data(w_operand2_rd),    // Read output 2 (asynchronous)
         .i_tgt_data(w_result_mem),          // Input to write to the target (on posedge)
 
         .i_wr_en(r_valid_mem)               // High to write on posedge
@@ -337,8 +349,8 @@ module core (
             r_src1_decode   <= r_src1_next;
             r_src2_decode   <= r_src2_next;
             r_opcode_decode <= w_opcode_decode;
-            r_operand1_decode    <= w_operand1_decode;
-            r_operand2_decode    <= w_operand2_decode;
+            r_operand1_decode    <= w_operand1_rd;
+            r_operand2_decode    <= w_operand2_rd;
             r_operand_imm_decode <= r_imm_next;
         end
     end
@@ -355,10 +367,6 @@ module core (
     
     wire[15:0]  w_aluout;
     wire        w_alueq;
-
-    // Forwarded values of operand 1 and 2
-    reg[15:0]   r_operand1_fwd;
-    reg[15:0]   r_operand2_fwd;
 
     // Forward values for operand 1
     always @(*) begin
