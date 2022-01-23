@@ -375,7 +375,7 @@ module core (
             else if(r_src1_decode == r_tgt_wb)
                 r_operand1_fwd <= r_result_wb;
             else
-                r_operand1_fwd <= r_operand1_fwd;
+                r_operand1_fwd <= r_operand1_decode;
         end
     end
     // Forward values for operand 2
