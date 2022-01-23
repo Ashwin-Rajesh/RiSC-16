@@ -44,17 +44,17 @@ module mem_reg #(
 );
 
     // Memory
-    reg [p_WORD_LEN-1:0] r_memory[p_REG_FILE_SIZE-1:1];
+    reg [p_WORD_LEN-1:0] r_memory[p_REG_FILE_SIZE-1:0];
     
     // For iteration
     integer i;
 
-  	assign o_src1_data = (i_src1 === 0) ? 0 : r_memory[i_src1];
-  	assign o_src2_data = (i_src2 === 0) ? 0 : r_memory[i_src2];
+  	assign o_src1_data = r_memory[i_src1];
+  	assign o_src2_data = r_memory[i_src2];
 
     // Initial values are 0
     initial begin
-      for(i = 1; i < p_REG_FILE_SIZE; i = i + 1)
+      for(i = 0; i < p_REG_FILE_SIZE; i = i + 1)
             r_memory[i] <= 0;
     end
 
@@ -80,6 +80,8 @@ module mem_reg #(
     
         // Track memory
         assert(r_memory[f_test_reg] == f_test_val);
+
+        assert(r_memory[0] == 0);
 
         // Outputs must never be indeterminate
         assert(^o_src1_data !== 1'bx);
