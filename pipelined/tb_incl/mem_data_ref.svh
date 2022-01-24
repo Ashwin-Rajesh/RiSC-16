@@ -53,6 +53,8 @@ class datamem #(int size = 1024);
   	function bit[15:0] read_mem(bit[15:0] addr);
       	if(addr < size)
         	return mem_ref[addr];
+      	else
+          	return 0;
     endfunction
 
 	// Reset memory
