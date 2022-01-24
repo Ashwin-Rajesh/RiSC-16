@@ -138,6 +138,8 @@ The decode stage maps rega, regb, regc to target and source register slots. We a
 | BEQ         | regb   | rega       | r0   | short immediate
 | JALR        | regb   | r0         | rega | 0
 
+Additionally, a forwarding path from WB back to DECODE had to be made for the special case where an instruction after DECODE stalled from an LW that completed EXEC but also needed the value that just got written to the register file and so is now in the writeback pipeline registers. So, we need to update the value in the decode stage operand pipeline registers. This is only needed when decode stage stalls. This was found using constrained random verification.
+
 ---
 
 ## Verification
@@ -148,7 +150,7 @@ Here, we need to maintain a queue. We push to it every time the core requests a 
 
 It was pretty hard debugging, so I added more logging of the pipeline registers. After several bug fixes, most of them related to stalls and forwarding and awkward combinations of both I hadnt thought of, the test finally passed!
 
-It was verified for 100,000 instructions. This took 1,389,840 simulation cycles and with a 10 cycle clock, that results in an IPC (Instructions Per Cycle) of ```0.719``` or CPI (Cycles Per Instruction) of ```1.389```! And thats without ANY branch prediction, not even always taken/not taken.
+It was verified for 100,000 instructions. This took 1,389,840 simulation cycles and with a 10 cycle clock, that results in an IPC (Instructions Per Cycle) of ```0.719``` or CPI (Cycles Per Instruction) of ```1.389```! And thats without ANY branch prediction, not even always taken/not taken. We always add bubbles on encountering a possible branch.
 
 ---
 
@@ -219,18 +221,18 @@ It is just a single RAMB block.
 
 Logic utilization
 
-|          Site Type         | Used |Available | Util% |
+|          Site Type         | Used | Available | Util% |
 |---|---|---|---|
-| Slice LUTs                 |  291 |    63400 |  0.46 |
-|   LUT as Logic             |  267 |    63400 |  0.42 |
-|   LUT as Memory            |   24 |    19000 |  0.13 |
-|     LUT as Distributed RAM |   24 |          |       |
-|     LUT as Shift Register  |    0 |          |       |
-| Slice Registers            |  224 |   126800 |  0.18 |
-|   Register as Flip Flop    |  224 |   126800 |  0.18 |
-|   Register as Latch        |    0 |   126800 |  0.00 |
-| F7 Muxes                   |    0 |    31700 |  0.00 |
-| F8 Muxes                   |    0 |    15850 |  0.00 |
+| Slice LUTs*                |  265 |     63400 |  0.42 |
+|   LUT as Logic             |  241 |     63400 |  0.38 |
+|   LUT as Memory            |   24 |     19000 |  0.13 |
+|     LUT as Distributed RAM |   24 |           |       |
+|     LUT as Shift Register  |    0 |           |       |
+| Slice Registers            |  224 |    126800 |  0.18 |
+|   Register as Flip Flop    |  224 |    126800 |  0.18 |
+|   Register as Latch        |    0 |    126800 |  0.00 |
+| F7 Muxes                   |    0 |     31700 |  0.00 |
+| F8 Muxes                   |    0 |     15850 |  0.00 |
 
 Block memory utilization
 
@@ -242,3 +244,7 @@ Block memory utilization
 |     RAMB18E1 only |    2 |           |       |
 
 One is for data memory and the other for instruction memory
+
+We were able to synthesize for a maximum frequency of 150MHz, more than double that of the single cycle implementation, that too with about half its resources! Since IPC is less than 1, the actual performance is lower than that, but still, its a pretty good improvement!
+
+The pipelined version uses registers and RAMB but the single cycle one only used distributed RAM from LUTs.
